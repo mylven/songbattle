@@ -397,7 +397,7 @@ begin
     where room_id = v_room_id and member_id = p_member_id
   ) then raise exception 'You are not a member of this room'; end if;
   if length(v_title) > 120 or length(v_url) > 500
-    or v_url !~* '^https://(www\.youtube\.com/|music\.youtube\.com/|youtu\.be/|open\.spotify\.com/)'
+    or v_url !~* '^https://(youtube\.com/|www\.youtube\.com/|music\.youtube\.com/|youtu\.be/|open\.spotify\.com/)'
   then raise exception 'Invalid Spotify or YouTube URL'; end if;
 
   insert into public.songbattle_room_submissions (room_id, member_id, title, url)
