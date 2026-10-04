@@ -143,6 +143,46 @@
     .step-number { display: grid; width: 27px; height: 27px; place-items: center; margin-bottom: 13px; border-radius: 8px; background: rgba(169,139,255,.12); color: #cdbbff; font-size: 11px; font-weight: 800; }
     .step h3 { margin: 0 0 5px; font-size: 13px; }
     .step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .room-card { padding: 22px; border: 1px solid var(--line); border-radius: 17px; background: rgba(19,18,27,.82); }
+    .room-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .room-form { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.018); }
+    .room-form h3, .room-submissions h3, .room-members h3 { margin: 0; font-size: 14px; }
+    .room-form p, .room-hint { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .room-form label { display: grid; gap: 6px; color: #d9d4e4; font-size: 11px; font-weight: 650; }
+    .room-input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: #100f16; color: var(--text); font: inherit; font-size: 12px; }
+    .room-input::placeholder { color: #777285; }
+    .room-input:focus { border-color: rgba(197,173,255,.55); outline: 2px solid rgba(165,139,255,.2); }
+    .room-button { display: inline-flex; min-height: 39px; justify-content: center; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid rgba(198,176,255,.2); border-radius: 9px; background: rgba(170,137,255,.12); color: #e5dcff; cursor: pointer; font-size: 11px; font-weight: 750; }
+    .room-button:hover:not(:disabled) { border-color: rgba(198,176,255,.5); background: rgba(170,137,255,.2); }
+    .room-button:disabled { cursor: wait; opacity: .55; }
+    .room-button.secondary { border-color: var(--line); background: rgba(255,255,255,.035); color: #ded9e8; }
+    .room-button.danger { border-color: rgba(255,120,147,.2); background: rgba(255,120,147,.08); color: #ffb8c6; }
+    .room-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .room-error { min-height: 17px; margin: 0; color: #ff9cad; font-size: 11px; line-height: 1.5; }
+    .room-header { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
+    .room-code { color: #d1baff; font-size: 23px; font-weight: 850; letter-spacing: 3px; }
+    .room-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .room-live { display: inline-flex; align-items: center; gap: 7px; color: var(--green); font-size: 10px; }
+    .room-live::before { width: 7px; height: 7px; border-radius: 50%; background: var(--green); content: ""; }
+    .room-layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 15px; }
+    .room-submissions, .room-members { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.13); }
+    .room-submissions { display: grid; align-content: start; gap: 12px; }
+    .room-members { display: grid; align-content: start; gap: 10px; }
+    .room-submission-list, .room-member-list { display: grid; gap: 9px; }
+    .submission-item, .member-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); }
+    .submission-copy, .member-copy { min-width: 0; }
+    .submission-title { overflow-wrap: anywhere; margin: 0 0 4px; font-size: 12px; font-weight: 730; }
+    .submission-meta, .member-meta { color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .submission-link { color: #c9b5ff; font-size: 10px; font-weight: 700; }
+    .submission-link:hover { text-decoration: underline; }
+    .member-item { padding: 9px 10px; }
+    .member-name { overflow: hidden; margin: 0 0 3px; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .member-role { color: #c4afff; font-size: 9px; font-weight: 750; }
+    .room-empty { padding: 17px 10px; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: center; }
+    .room-submit-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; align-items: end; gap: 9px; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.02); }
+    .room-submit-form label { display: grid; gap: 6px; color: #d9d4e4; font-size: 10px; font-weight: 650; }
+    .room-status { min-height: 16px; color: var(--muted); font-size: 10px; }
+    [hidden] { display: none !important; }
     footer { border-top: 1px solid var(--line); }
     .footer-content { display: flex; min-height: 78px; justify-content: space-between; align-items: center; gap: 20px; color: var(--muted); font-size: 11px; }
     .footer-content strong { color: #dbd5e7; }
@@ -179,6 +219,13 @@
       .steps { grid-template-columns: 1fr; }
       .step { min-height: auto; padding: 14px; }
       .step-number { float: left; margin: 0 12px 0 0; }
+      .room-card { padding: 13px; }
+      .room-entry-grid, .room-layout { grid-template-columns: 1fr; }
+      .room-header { align-items: flex-start; }
+      .room-header .room-actions { justify-content: flex-end; }
+      .room-submit-form { grid-template-columns: 1fr; }
+      .room-submit-form .room-button { width: 100%; }
+      .room-members { grid-row: 1; }
       .footer-content { min-height: 72px; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 15px 0; text-align: center; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -197,7 +244,7 @@
       </a>
       <div class="nav-links">
         <a href="#how-it-works">Hogyan működik?</a>
-        <a class="nav-cta" href="#battle">Párbaj indítása <span aria-hidden="true">↗</span></a>
+        <a class="nav-cta" href="#rooms">Szoba létrehozása <span aria-hidden="true">↗</span></a>
       </div>
     </nav>
   </header>
@@ -206,7 +253,76 @@
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span> A mai zenei párbaj</div>
       <h1 id="hero-title">Két dal. <span>Egy győztes.</span></h1>
-      <p class="hero-copy">A te füled dönt. Válaszd ki, melyik szám pörögjön tovább, és lépj a következő párbajra!</p>
+      <p class="hero-copy">Szavazz a kedvencedre, vagy hozz létre egy szobát, ahová a barátaid is beküldhetik a zenéiket.</p>
+    </section>
+
+    <section class="section wrap" id="rooms" aria-labelledby="rooms-title">
+      <div class="section-heading">
+        <h2 id="rooms-title">Hallgassatok együtt</h2>
+        <p>Privát zeneszoba Spotify- és YouTube-linkekkel</p>
+      </div>
+      <div class="room-card">
+        <div id="room-entry">
+          <div class="room-entry-grid">
+            <form class="room-form" id="create-room-form">
+              <h3>Új szoba létrehozása</h3>
+              <p>Te leszel a host: látod az összes beküldött zenét, és kezelheted a szobát.</p>
+              <label for="host-name">A neved
+                <input class="room-input" id="host-name" name="name" maxlength="32" autocomplete="nickname" placeholder="Például: Alex" required>
+              </label>
+              <button class="room-button" type="submit">Szoba létrehozása</button>
+            </form>
+            <form class="room-form" id="join-room-form">
+              <h3>Csatlakozás egy szobához</h3>
+              <p>Add meg a hosttól kapott szobakódot, majd küldd be a kedvenc zenéidet.</p>
+              <label for="join-name">A neved
+                <input class="room-input" id="join-name" name="name" maxlength="32" autocomplete="nickname" placeholder="Például: Sam" required>
+              </label>
+              <label for="join-code">Szobakód
+                <input class="room-input" id="join-code" name="code" maxlength="6" pattern="[A-Fa-f0-9]{6}" autocapitalize="characters" placeholder="A1B2C3" required>
+              </label>
+              <button class="room-button" type="submit">Belépés a szobába</button>
+            </form>
+          </div>
+          <p class="room-error" id="room-entry-error" role="status" aria-live="polite"></p>
+        </div>
+        <div id="room-view" hidden>
+          <div class="room-header">
+            <div>
+              <div class="room-live">Élő szoba</div>
+              <div class="room-code" id="room-code"></div>
+              <p class="room-subtitle" id="room-role"></p>
+            </div>
+            <div class="room-actions">
+              <button class="room-button secondary" id="copy-room-code" type="button">Kód másolása</button>
+              <button class="room-button secondary" id="leave-room" type="button">Kilépés</button>
+              <button class="room-button danger" id="close-room" type="button" hidden>Szoba bezárása</button>
+            </div>
+          </div>
+          <form class="room-submit-form" id="submit-song-form">
+            <label for="song-name">Dal címe <span class="room-hint">(nem kötelező)</span>
+              <input class="room-input" id="song-name" maxlength="120" placeholder="Például: kedvenc számom">
+            </label>
+            <label for="song-url">Spotify- vagy YouTube-link
+              <input class="room-input" id="song-url" type="url" maxlength="500" placeholder="https://open.spotify.com/... vagy https://youtu.be/..." required>
+            </label>
+            <button class="room-button" id="submit-song-button" type="submit">Zene beküldése</button>
+          </form>
+          <p class="room-status" id="room-status" role="status" aria-live="polite"></p>
+          <div class="room-layout">
+            <section class="room-submissions" aria-labelledby="room-submissions-title">
+              <h3 id="room-submissions-title">Beküldött zenék</h3>
+              <p class="room-hint" id="room-privacy-note"></p>
+              <div class="room-submission-list" id="room-submission-list"></div>
+            </section>
+            <aside class="room-members" aria-labelledby="room-members-title">
+              <h3 id="room-members-title">Résztvevők</h3>
+              <div class="room-member-list" id="room-member-list"></div>
+            </aside>
+          </div>
+          <p class="room-error" id="room-error" role="status" aria-live="polite"></p>
+        </div>
+      </div>
     </section>
 
     <section class="battle-section wrap" id="battle" aria-labelledby="battle-heading">
@@ -286,12 +402,23 @@
     const voteNote = document.querySelector("#vote-note");
     const connectionStatus = document.querySelector("#connection-status");
     const connectionLabel = document.querySelector("#connection-label");
+    const roomEntry = document.querySelector("#room-entry");
+    const roomView = document.querySelector("#room-view");
+    const roomEntryError = document.querySelector("#room-entry-error");
+    const roomError = document.querySelector("#room-error");
+    const roomStatus = document.querySelector("#room-status");
+    const roomSubmissionList = document.querySelector("#room-submission-list");
+    const roomMemberList = document.querySelector("#room-member-list");
+    const roomSessionStorageKey = "songbattle-room-session-v1";
     const icon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
     let supabaseClient;
     let voterId;
     let battles = [];
     let round = 0;
     let busy = true;
+    let roomSession = null;
+    let roomRefreshInProgress = false;
+    let roomPoll;
 
     function setConnection(status, message) {
       connectionStatus.dataset.state = status;
@@ -314,6 +441,318 @@
       localStorage.setItem(voterStorageKey, id);
       return id;
     }
+
+    function createUuid() {
+      if (!crypto.randomUUID) throw new Error("Ez a böngésző nem támogatja a biztonságos szobaazonosítást.");
+      return crypto.randomUUID();
+    }
+
+    function saveRoomSession(session) {
+      try {
+        localStorage.setItem(roomSessionStorageKey, JSON.stringify(session));
+        roomSession = session;
+      } catch (error) {
+        console.error("A szobamenet mentése nem sikerült.", error);
+        throw new Error("A böngésző nem tudta megjegyezni a szobamenetet. Engedélyezd a helyi tárhelyet, majd próbáld újra.");
+      }
+    }
+
+    function loadRoomSession() {
+      try {
+        const session = JSON.parse(localStorage.getItem(roomSessionStorageKey) || "null");
+        if (session && /^[A-F0-9]{6}$/.test(session.code) &&
+            /^[0-9a-f-]{36}$/i.test(session.memberId) &&
+            (!session.hostToken || /^[0-9a-f-]{36}$/i.test(session.hostToken))) {
+          return session;
+        }
+      } catch (error) {
+        console.warn("A mentett szobamenet nem olvasható.", error);
+      }
+      return null;
+    }
+
+    function clearRoomSession() {
+      localStorage.removeItem(roomSessionStorageKey);
+      roomSession = null;
+      roomView.hidden = true;
+      roomEntry.hidden = false;
+      if (roomPoll) clearInterval(roomPoll);
+      roomPoll = null;
+    }
+
+    function roomErrorMessage(error) {
+      const message = error?.message || "";
+      if (/invalid.*(room|code)|room.*not found|szoba nem található/i.test(message)) return "Nem található ilyen szobakód. Ellenőrizd a kódot, és próbáld újra.";
+      if (/kicked|banned|removed/i.test(message)) return "A host eltávolított ebből a szobából.";
+      if (/already.*member|already.*exists/i.test(message)) return "Már tagja vagy ennek a szobának.";
+      if (/not.*host|host.*only|unauthorized/i.test(message)) return "Ehhez a művelethez host jogosultság szükséges.";
+      if (/youtube|spotify|url|link/i.test(message)) return "Érvényes Spotify- vagy YouTube-linket adj meg.";
+      return message || "A művelet nem sikerült. Ellenőrizd a kapcsolatot, majd próbáld újra.";
+    }
+
+    function setRoomBusy(form, isBusy) {
+      form.querySelectorAll("button").forEach(button => { button.disabled = isBusy; });
+    }
+
+    function renderRoom(room) {
+      const isHost = room.is_host === true;
+      document.querySelector("#room-code").textContent = room.room.code;
+      document.querySelector("#room-role").textContent = isHost
+        ? "Hostként a teljes beküldési listát látod és kezelheted."
+        : "Csatlakozóként csak a saját beküldéseidet látod.";
+      document.querySelector("#room-privacy-note").textContent = isHost
+        ? "A host látja az összes résztvevő összes beküldését."
+        : "Adatvédelem: ebben a listában csak a saját beküldéseid jelennek meg.";
+      document.querySelector("#close-room").hidden = !isHost;
+      document.querySelector("#room-submissions-title").textContent = isHost ? "A szoba összes beküldése" : "Saját beküldéseid";
+
+      roomSubmissionList.innerHTML = room.submissions.length
+        ? room.submissions.map(submission => {
+          const safeUrl = escapeHtml(submission.url);
+          const safeTitle = escapeHtml(submission.title || `${submission.provider === "spotify" ? "Spotify" : "YouTube"}-zene`);
+          return `<article class="submission-item">
+            <div class="submission-copy">
+              <p class="submission-title">${safeTitle}</p>
+              <div class="submission-meta">${escapeHtml(submission.member_name)} · ${submission.provider === "spotify" ? "Spotify" : "YouTube"}</div>
+              <a class="submission-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">Megnyitás ↗</a>
+            </div>
+            ${isHost ? `<button class="room-button danger" type="button" data-delete-submission="${escapeHtml(submission.id)}" aria-label="Zene törlése: ${safeTitle}">Törlés</button>` : ""}
+          </article>`;
+        }).join("")
+        : `<div class="room-empty">${isHost ? "Még senki sem küldött be zenét." : "Még nem küldtél be zenét."}</div>`;
+
+      roomMemberList.innerHTML = room.members.length
+        ? room.members.map(member => `<article class="member-item">
+          <div class="member-copy">
+            <p class="member-name">${escapeHtml(member.display_name)}</p>
+            <span class="${member.is_host ? "member-role" : "member-meta"}">${member.is_host ? "HOST" : "Résztvevő"}</span>
+          </div>
+          ${isHost && !member.is_host ? `<button class="room-button danger" type="button" data-kick-member="${escapeHtml(member.id)}" aria-label="${escapeHtml(member.display_name)} eltávolítása">Kick</button>` : ""}
+        </article>`).join("")
+        : `<div class="room-empty">Nincsenek résztvevők.</div>`;
+
+      roomSubmissionList.querySelectorAll("[data-delete-submission]").forEach(button => {
+        button.addEventListener("click", () => deleteRoomSubmission(button.dataset.deleteSubmission));
+      });
+      roomMemberList.querySelectorAll("[data-kick-member]").forEach(button => {
+        button.addEventListener("click", () => kickRoomMember(button.dataset.kickMember));
+      });
+      roomEntry.hidden = true;
+      roomView.hidden = false;
+    }
+
+    async function refreshRoom() {
+      if (!roomSession || roomRefreshInProgress) return;
+      roomRefreshInProgress = true;
+      try {
+        const { data, error } = await supabaseClient.rpc("get_songbattle_room_state", {
+          p_room_code: roomSession.code,
+          p_member_id: roomSession.memberId,
+          p_host_token: roomSession.hostToken || null
+        });
+        if (error) throw error;
+        if (!data?.room || !Array.isArray(data.submissions) || !Array.isArray(data.members)) {
+          throw new Error("A szoba válasza érvénytelen.");
+        }
+        renderRoom(data);
+        roomError.textContent = "";
+        roomStatus.textContent = `${data.members.length} résztvevő · automatikus frissítés`;
+      } catch (error) {
+        console.error("A szoba frissítése nem sikerült.", error);
+        if (/kicked|banned|removed|not a member|closed/i.test(error?.message || "")) {
+          clearRoomSession();
+          roomEntryError.textContent = roomErrorMessage(error);
+          return;
+        }
+        roomError.textContent = "A szoba frissítése nem sikerült. Újrapróbálkozás folyamatban…";
+      } finally {
+        roomRefreshInProgress = false;
+      }
+    }
+
+    async function createRoom(name) {
+      const memberId = createUuid();
+      const { data, error } = await supabaseClient.rpc("create_songbattle_room", {
+        p_member_id: memberId,
+        p_display_name: name.trim()
+      });
+      if (error) throw error;
+      saveRoomSession({ code: data.room_code, memberId, hostToken: data.host_token });
+      roomEntryError.textContent = "";
+      roomStatus.textContent = "Szoba létrehozva. Oszd meg a kódot a résztvevőkkel.";
+      await refreshRoom();
+      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 3000);
+    }
+
+    async function joinRoom(code, name) {
+      const memberId = createUuid();
+      const { data, error } = await supabaseClient.rpc("join_songbattle_room", {
+        p_room_code: code.trim().toUpperCase(),
+        p_member_id: memberId,
+        p_display_name: name.trim()
+      });
+      if (error) throw error;
+      if (data !== true) throw new Error("Nem sikerült belépni a szobába.");
+      saveRoomSession({ code: code.trim().toUpperCase(), memberId, hostToken: null });
+      roomEntryError.textContent = "";
+      await refreshRoom();
+      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 3000);
+    }
+
+    async function submitRoomSong(form) {
+      if (!roomSession) return;
+      const url = new URL(document.querySelector("#song-url").value.trim());
+      const host = url.hostname.toLowerCase();
+      const provider = ["youtu.be", "youtube.com", "www.youtube.com", "music.youtube.com"].includes(host)
+        ? "youtube"
+        : host === "open.spotify.com"
+          ? "spotify"
+          : null;
+      if (url.protocol !== "https:" || !provider) {
+        throw new Error("A linknek https:// címmel kell kezdődnie, és a Spotify vagy YouTube oldaláról kell származnia.");
+      }
+      const { error } = await supabaseClient.rpc("submit_songbattle_room_song", {
+        p_room_code: roomSession.code,
+        p_member_id: roomSession.memberId,
+        p_title: document.querySelector("#song-name").value.trim(),
+        p_url: url.href
+      });
+      if (error) throw error;
+      form.reset();
+      roomStatus.textContent = "A zenéd bekerült a szobába.";
+      await refreshRoom();
+    }
+
+    async function deleteRoomSubmission(submissionId) {
+      if (!roomSession?.hostToken || !confirm("Biztosan törlöd ezt a beküldött zenét?")) return;
+      try {
+        const { error } = await supabaseClient.rpc("delete_songbattle_room_song", {
+          p_room_code: roomSession.code,
+          p_host_token: roomSession.hostToken,
+          p_submission_id: submissionId
+        });
+        if (error) throw error;
+        await refreshRoom();
+      } catch (error) {
+        console.error("A zene törlése nem sikerült.", error);
+        roomError.textContent = roomErrorMessage(error);
+      }
+    }
+
+    async function kickRoomMember(memberId) {
+      const member = roomMemberList.querySelector(`[data-kick-member="${CSS.escape(memberId)}"]`)
+        ?.closest(".member-item")?.querySelector(".member-name")?.textContent;
+      if (!roomSession?.hostToken || !confirm(`Eltávolítod ${member || "ezt a résztvevőt"} a szobából?`)) return;
+      try {
+        const { error } = await supabaseClient.rpc("kick_songbattle_room_member", {
+          p_room_code: roomSession.code,
+          p_host_token: roomSession.hostToken,
+          p_member_id: memberId
+        });
+        if (error) throw error;
+        await refreshRoom();
+      } catch (error) {
+        console.error("A résztvevő eltávolítása nem sikerült.", error);
+        roomError.textContent = roomErrorMessage(error);
+      }
+    }
+
+    async function leaveRoom() {
+      if (!roomSession || !confirm("Kilépsz ebből a szobából?")) return;
+      if (!roomSession.hostToken) {
+        const { error } = await supabaseClient.rpc("leave_songbattle_room", {
+          p_room_code: roomSession.code,
+          p_member_id: roomSession.memberId
+        });
+        if (error) {
+          roomError.textContent = roomErrorMessage(error);
+          return;
+        }
+      } else {
+        roomEntryError.textContent = "A host nem léphet ki a szobából. Zárd be a szobát.";
+        return;
+      }
+      clearRoomSession();
+      roomEntryError.textContent = "Kiléptél a szobából.";
+    }
+
+    async function closeRoom() {
+      if (!roomSession?.hostToken || !confirm("Biztosan bezárod ezt a szobát? A résztvevők és a beküldött zenék is törlődnek.")) return;
+      try {
+        const { error } = await supabaseClient.rpc("close_songbattle_room", {
+          p_room_code: roomSession.code,
+          p_host_token: roomSession.hostToken
+        });
+        if (error) throw error;
+        clearRoomSession();
+        roomEntryError.textContent = "A szobát bezártad.";
+      } catch (error) {
+        console.error("A szoba bezárása nem sikerült.", error);
+        roomError.textContent = roomErrorMessage(error);
+      }
+    }
+
+    document.querySelector("#create-room-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      setRoomBusy(form, true);
+      roomEntryError.textContent = "";
+      try {
+        await createRoom(document.querySelector("#host-name").value);
+      } catch (error) {
+        console.error("A szoba létrehozása nem sikerült.", error);
+        roomEntryError.textContent = roomErrorMessage(error);
+      } finally {
+        setRoomBusy(form, false);
+      }
+    });
+
+    document.querySelector("#join-room-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      setRoomBusy(form, true);
+      roomEntryError.textContent = "";
+      try {
+        await joinRoom(document.querySelector("#join-code").value, document.querySelector("#join-name").value);
+      } catch (error) {
+        console.error("A szobához csatlakozás nem sikerült.", error);
+        roomEntryError.textContent = roomErrorMessage(error);
+      } finally {
+        setRoomBusy(form, false);
+      }
+    });
+
+    document.querySelector("#submit-song-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      setRoomBusy(form, true);
+      roomError.textContent = "";
+      roomStatus.textContent = "Zene beküldése…";
+      try {
+        await submitRoomSong(form);
+      } catch (error) {
+        console.error("A zene beküldése nem sikerült.", error);
+        roomStatus.textContent = "";
+        roomError.textContent = roomErrorMessage(error);
+      } finally {
+        setRoomBusy(form, false);
+      }
+    });
+
+    document.querySelector("#copy-room-code").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(roomSession.code);
+        roomStatus.textContent = "A szobakód a vágólapra másolva.";
+      } catch (error) {
+        console.error("A szobakód másolása nem sikerült.", error);
+        roomStatus.textContent = `Szobakód: ${roomSession.code}`;
+      }
+    });
+    document.querySelector("#leave-room").addEventListener("click", () => leaveRoom().catch(error => {
+      console.error("A szobából kilépés nem sikerült.", error);
+      roomError.textContent = roomErrorMessage(error);
+    }));
+    document.querySelector("#close-room").addEventListener("click", closeRoom);
 
     function render() {
       if (!battles.length) return;
@@ -450,6 +889,11 @@
               setConnection("error", "Újracsatlakozás…");
             }
           });
+        roomSession = loadRoomSession();
+        if (roomSession) {
+          await refreshRoom();
+          roomPoll = setInterval(() => refreshRoom(), 3000);
+        }
       } catch (error) {
         console.error("Songbattle inicializálása nem sikerült.", error);
         busy = true;

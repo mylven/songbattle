@@ -1,39 +1,32 @@
 # Songbattle
 
-Reszponzív, magyar nyelvű zenei párbajoldal. A Supabase tárolja a közös szavazatokat, az eredményeket pedig élőben frissíti minden megnyitott böngészőben. Az oldal GitHub Pagesen fut, a háttérszolgáltatáshoz ingyenes Supabase-projekt használható.
+Magyar nyelvű zenei párbajoldal közös, élő szavazással és privát zeneszobákkal. A GitHub Pages szolgáltatja a weboldalt; a Supabase tárolja a párbajokat és a szobák adatait.
 
-## Beállítás és közzététel
+## Élő zeneszobák
 
-### 1. Hozz létre egy Supabase-projektet
+- A host létrehoz egy szobát, és megosztja a hatkarakteres belépőkódot.
+- A résztvevők névvel csatlakoznak, majd Spotify- vagy YouTube-linkeket küldenek be.
+- A host látja a szoba teljes zenelistáját és résztvevőit, törölhet zenét, eltávolíthat résztvevőt vagy bezárhatja a szobát.
+- A csatlakozó kizárólag a saját beküldéseit látja; a többi résztvevő zenéi és nevei nem kerülnek vissza a böngészőjébe.
+- A szobalista három másodpercenként frissül. A host jogosultságát adatbázisban tárolt véletlenszerű bearer token védi; a token csak a host saját böngészőjében tárolódik.
+- A kiléptetett résztvevő az adott azonosítóval nem tud újra csatlakozni. Új böngészőazonosítóval megkerülhető; fiók vagy CAPTCHA nélkül a teljes személyazonosság nem ellenőrizhető.
 
-1. Hozz létre egy projektet a [supabase.com](https://supabase.com) oldalon.
-2. A projekt **Connect** vagy **Settings → API Keys** oldalán másold ki a projekt URL-jét és a **publishable** kulcsot. A régi projektekben ez az `anon` kulcs.
-3. A `supabase-config.js` fájlban cseréld ki a `YOUR_PROJECT_ID` és `YOUR_SUPABASE_PUBLISHABLE_KEY` értékeket a saját adataidra.
+A szoba beküldése Spotify- és YouTube-linket fogad el, de a számok lejátszását nem építi be: a link külön lapon nyílik meg. A linkek nem jelennek meg más résztvevőknek.
 
-A publishable/anon kulcs böngészőben használható, nyilvános kulcs. **Soha ne másolj ide `service_role` vagy `secret` kulcsot**; az adminisztrátori kulcs teljes hozzáférést ad az adatbázishoz. Az adatbázis-hozzáférést a séma Row Level Security szabályai korlátozzák.
+## Supabase-beállítás
 
-### 2. Hozd létre az adatbázist
+Ez a projekt már a `mylven/songbattle` GitHub-repozitóriumhoz és a hozzá tartozó Supabase-projekthez van bekötve. Ha másik Supabase-projektet szeretnél használni, a `supabase-config.js` fájlban állítsd be annak URL-jét és publikus publishable/anon kulcsát.
+
+A jelenlegi Supabase-projekthez a szobák adatbázisát így telepítsd:
 
 1. Nyisd meg a Supabase-projekt **SQL Editor** oldalát.
-2. Másold be a projektben található [`supabase-schema.sql`](./supabase-schema.sql) teljes tartalmát, majd futtasd le.
-3. A séma három mintapárbajt hoz létre, védi a szavazatokat, az ismételt szavazást adatbázis-szinten utasítja el, és bekapcsolja az élő eredményfrissítéshez szükséges Realtime publikációt.
+2. Futtasd le a `supabase-schema.sql` teljes tartalmát. A sémát újrafuttathatóra terveztük; a szobafunkciókat és jogosultságokat hozzáadja a meglévő szavazási adatbázishoz.
+3. Ellenőrizd a weboldalon, hogy a „Szoba létrehozása” gombbal létrehozott szobakódot egy másik böngészőből meg tudod nyitni.
 
-A mintadalok cseréjéhez módosítsd a sorokat a Supabase `songbattle_battles` táblájában. Egy párbaj két dalból áll; az oldal az aktív párbajokat a `position` mező sorrendjében jeleníti meg.
+A böngészőben kizárólag a projekt URL-je és a publishable/anon kulcs használható. **`service_role` vagy `secret` kulcsot soha ne tegyél a weboldal kódjába.** A szobatáblák közvetlen nyilvános olvasása tiltott; az alkalmazás jogosultság-ellenőrzött adatbázis-függvényeken keresztül éri el őket.
 
-### 3. Tedd közzé GitHub Pagesen
+## GitHub Pages
 
-1. Töltsd fel a projekt fájljait a GitHub-repozitóriumod `main` ágára. A `supabase-config.js` a nyilvános publishable kulcsot tartalmazza, nem adminisztrátori titkot.
-2. A repó **Settings → Pages → Build and deployment → Source** beállításánál válaszd a **GitHub Actions** lehetőséget.
-3. A [`pages.yml`](./.github/workflows/pages.yml) munkafolyamat automatikusan közzéteszi az oldalt minden `main` ágra történő feltöltéskor.
-4. Az oldal címét a **Settings → Pages** oldalon találod.
+Az oldal a `main` ágra feltöltés után automatikusan települ a GitHub Actions segítségével. A GitHub Pages forrása **GitHub Actions** legyen. A publikus oldal címe: <https://mylven.github.io/songbattle/>.
 
-## A szavazás működése és korlátai
-
-- A szavazatok és az összesített eredmények Supabase-ben tárolódnak; az élő eredmény minden látogatónál frissül.
-- A böngésző egy véletlenszerű, helyben tárolt azonosítót használ, az adatbázis pedig párbajonként egy szavazatot enged ehhez az azonosítóhoz.
-- Bejelentkezés nélküli nyilvános szavazásnál ez nem bizonyítja a látogató személyazonosságát: a böngésző tárhelyének törlésével vagy másik eszköz használatával új szavazóazonosító hozható létre. Nagyobb tétű szavazáshoz fiók, CAPTCHA és szerveroldali visszaélésvédelem szükséges.
-- A mintapárbajok és daladatok a saját Supabase-adatbázisodban vannak; a zenelejátszás és a látogatók által beküldött dalok nem részei ennek az alapverziónak.
-
-## Helyi előnézet
-
-GitHub Pagesen HTTPS-en működik. Helyi kipróbáláshoz indíts webszervert a projekt mappájában (például `py -m http.server 8000`), majd nyisd meg a `http://localhost:8000` címet. Az élő szavazáshoz a Supabase-beállítást helyben is meg kell adni.
+Helyi előnézethez indíts webszervert a projekt mappájában (például `py -m http.server 8000`), majd nyisd meg a `http://localhost:8000` címet.

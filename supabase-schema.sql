@@ -154,3 +154,372 @@ begin
   end if;
 end
 $$;
+
+create table if not exists public.songbattle_rooms (
+  id uuid primary key default gen_random_uuid(),
+  room_code text not null unique check (room_code ~ '^[A-F0-9]{6}$'),
+  host_member_id uuid not null,
+  host_token uuid not null,
+  created_at timestamptz not null default now(),
+  is_active boolean not null default true
+);
+
+create table if not exists public.songbattle_room_members (
+  member_id uuid primary key,
+  room_id uuid not null references public.songbattle_rooms(id) on delete cascade,
+  display_name text not null check (length(btrim(display_name)) between 1 and 32),
+  joined_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'songbattle_rooms_host_member_fk'
+      and conrelid = 'public.songbattle_rooms'::regclass
+  ) then
+    alter table public.songbattle_rooms
+      add constraint songbattle_rooms_host_member_fk
+      foreign key (host_member_id) references public.songbattle_room_members(member_id)
+      deferrable initially deferred;
+  end if;
+end
+$$;
+
+create table if not exists public.songbattle_room_bans (
+  room_id uuid not null references public.songbattle_rooms(id) on delete cascade,
+  member_id uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (room_id, member_id)
+);
+
+create table if not exists public.songbattle_room_submissions (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.songbattle_rooms(id) on delete cascade,
+  member_id uuid not null references public.songbattle_room_members(member_id) on delete cascade,
+  title text not null default '' check (length(title) <= 120),
+  url text not null check (length(url) <= 500),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists songbattle_room_members_room_idx
+  on public.songbattle_room_members (room_id);
+create index if not exists songbattle_room_submissions_room_idx
+  on public.songbattle_room_submissions (room_id, created_at);
+
+alter table public.songbattle_rooms enable row level security;
+alter table public.songbattle_room_members enable row level security;
+alter table public.songbattle_room_bans enable row level security;
+alter table public.songbattle_room_submissions enable row level security;
+
+revoke all on public.songbattle_rooms, public.songbattle_room_members,
+  public.songbattle_room_bans, public.songbattle_room_submissions
+  from public, anon, authenticated;
+
+create or replace function public.create_songbattle_room(
+  p_member_id uuid,
+  p_display_name text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room_id uuid := gen_random_uuid();
+  v_room_code text;
+  v_host_token uuid := gen_random_uuid();
+  v_name text := btrim(p_display_name);
+begin
+  if p_member_id is null or v_name is null or length(v_name) not between 1 and 32 then
+    raise exception 'A név 1 és 32 karakter közötti legyen.';
+  end if;
+
+  for attempt in 1..10 loop
+    v_room_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+    begin
+      insert into public.songbattle_rooms (id, room_code, host_member_id, host_token)
+      values (v_room_id, v_room_code, p_member_id, v_host_token);
+      exit;
+    exception when unique_violation then
+      if attempt = 10 then
+        raise exception 'Nem sikerült egyedi szobakódot létrehozni.';
+      end if;
+    end;
+  end loop;
+
+  insert into public.songbattle_room_members (member_id, room_id, display_name)
+  values (p_member_id, v_room_id, v_name);
+
+  return jsonb_build_object('room_code', v_room_code, 'host_token', v_host_token);
+end;
+$$;
+
+create or replace function public.join_songbattle_room(
+  p_room_code text,
+  p_member_id uuid,
+  p_display_name text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room_id uuid;
+  v_name text := btrim(p_display_name);
+begin
+  if p_member_id is null or v_name is null or length(v_name) not between 1 and 32 then
+    raise exception 'A név 1 és 32 karakter közötti legyen.';
+  end if;
+
+  select id into v_room_id
+  from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code)) and is_active;
+  if v_room_id is null then raise exception 'Room not found'; end if;
+  if exists (
+    select 1 from public.songbattle_room_bans
+    where room_id = v_room_id and member_id = p_member_id
+  ) then raise exception 'You were kicked from this room'; end if;
+
+  insert into public.songbattle_room_members (member_id, room_id, display_name)
+  values (p_member_id, v_room_id, v_name);
+  return true;
+end;
+$$;
+
+create or replace function public.get_songbattle_room_state(
+  p_room_code text,
+  p_member_id uuid,
+  p_host_token uuid default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_room public.songbattle_rooms%rowtype;
+  v_is_host boolean;
+  v_result jsonb;
+begin
+  select * into v_room from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code)) and is_active;
+  if not found then raise exception 'Room not found'; end if;
+
+  v_is_host := coalesce(
+    v_room.host_member_id = p_member_id and v_room.host_token = p_host_token,
+    false
+  );
+  if not v_is_host and not exists (
+    select 1 from public.songbattle_room_members
+    where room_id = v_room.id and member_id = p_member_id
+  ) then raise exception 'You are not a member of this room'; end if;
+  if exists (
+    select 1 from public.songbattle_room_bans
+    where room_id = v_room.id and member_id = p_member_id
+  ) then raise exception 'You were kicked from this room'; end if;
+
+  select jsonb_build_object(
+    'room', jsonb_build_object('code', v_room.room_code, 'created_at', v_room.created_at),
+    'is_host', v_is_host,
+    'members', case when v_is_host then
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', m.member_id,
+          'display_name', m.display_name,
+          'is_host', m.member_id = v_room.host_member_id
+        ) order by m.joined_at)
+        from public.songbattle_room_members as m where m.room_id = v_room.id
+      ), '[]'::jsonb)
+      else jsonb_build_array(jsonb_build_object(
+        'id', p_member_id,
+        'display_name', (select m.display_name from public.songbattle_room_members as m
+          where m.room_id = v_room.id and m.member_id = p_member_id),
+        'is_host', false
+      ))
+    end,
+    'submissions', case when v_is_host then
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', s.id, 'member_id', s.member_id, 'member_name', m.display_name,
+          'title', s.title, 'url', s.url,
+          'provider', case when s.url ~* '^https://open\.spotify\.com/' then 'spotify' else 'youtube' end,
+          'created_at', s.created_at
+        ) order by s.created_at desc)
+        from public.songbattle_room_submissions as s
+        join public.songbattle_room_members as m on m.member_id = s.member_id
+        where s.room_id = v_room.id
+      ), '[]'::jsonb)
+      else coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', s.id, 'member_id', s.member_id, 'member_name', m.display_name,
+          'title', s.title, 'url', s.url,
+          'provider', case when s.url ~* '^https://open\.spotify\.com/' then 'spotify' else 'youtube' end,
+          'created_at', s.created_at
+        ) order by s.created_at desc)
+        from public.songbattle_room_submissions as s
+        join public.songbattle_room_members as m on m.member_id = s.member_id
+        where s.room_id = v_room.id and s.member_id = p_member_id
+      ), '[]'::jsonb)
+    end
+  ) into v_result;
+  return v_result;
+end;
+$$;
+
+create or replace function public.submit_songbattle_room_song(
+  p_room_code text,
+  p_member_id uuid,
+  p_title text,
+  p_url text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room_id uuid;
+  v_title text := btrim(coalesce(p_title, ''));
+  v_url text := btrim(p_url);
+  v_submission_id uuid;
+begin
+  select id into v_room_id from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code)) and is_active;
+  if v_room_id is null then raise exception 'Room not found'; end if;
+  if not exists (
+    select 1 from public.songbattle_room_members
+    where room_id = v_room_id and member_id = p_member_id
+  ) or exists (
+    select 1 from public.songbattle_room_bans
+    where room_id = v_room_id and member_id = p_member_id
+  ) then raise exception 'You are not a member of this room'; end if;
+  if length(v_title) > 120 or length(v_url) > 500
+    or v_url !~* '^https://(www\.youtube\.com/|music\.youtube\.com/|youtu\.be/|open\.spotify\.com/)'
+  then raise exception 'Invalid Spotify or YouTube URL'; end if;
+
+  insert into public.songbattle_room_submissions (room_id, member_id, title, url)
+  values (v_room_id, p_member_id, v_title, v_url)
+  returning id into v_submission_id;
+  return v_submission_id;
+end;
+$$;
+
+create or replace function public.delete_songbattle_room_song(
+  p_room_code text,
+  p_host_token uuid,
+  p_submission_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room_id uuid;
+  v_deleted integer;
+begin
+  select id into v_room_id from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code))
+    and host_token = p_host_token and is_active;
+  if v_room_id is null then raise exception 'Host permission required'; end if;
+  delete from public.songbattle_room_submissions
+  where id = p_submission_id and room_id = v_room_id;
+  get diagnostics v_deleted = row_count;
+  return v_deleted = 1;
+end;
+$$;
+
+create or replace function public.kick_songbattle_room_member(
+  p_room_code text,
+  p_host_token uuid,
+  p_member_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room public.songbattle_rooms%rowtype;
+  v_deleted integer;
+begin
+  select * into v_room from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code))
+    and host_token = p_host_token and is_active;
+  if not found then raise exception 'Host permission required'; end if;
+  if p_member_id = v_room.host_member_id then raise exception 'The host cannot kick themselves'; end if;
+
+  insert into public.songbattle_room_bans (room_id, member_id)
+  values (v_room.id, p_member_id) on conflict do nothing;
+  delete from public.songbattle_room_members
+  where room_id = v_room.id and member_id = p_member_id;
+  get diagnostics v_deleted = row_count;
+  if v_deleted = 0 then raise exception 'Member not found'; end if;
+  return true;
+end;
+$$;
+
+create or replace function public.leave_songbattle_room(
+  p_room_code text,
+  p_member_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_room public.songbattle_rooms%rowtype;
+  v_deleted integer;
+begin
+  select * into v_room from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code)) and is_active;
+  if not found then raise exception 'Room not found'; end if;
+  if p_member_id = v_room.host_member_id then raise exception 'The host must close the room'; end if;
+  delete from public.songbattle_room_members
+  where room_id = v_room.id and member_id = p_member_id;
+  get diagnostics v_deleted = row_count;
+  return v_deleted = 1;
+end;
+$$;
+
+create or replace function public.close_songbattle_room(
+  p_room_code text,
+  p_host_token uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_deleted integer;
+begin
+  delete from public.songbattle_rooms
+  where room_code = upper(btrim(p_room_code))
+    and host_token = p_host_token and is_active;
+  get diagnostics v_deleted = row_count;
+  if v_deleted = 0 then raise exception 'Host permission required'; end if;
+  return true;
+end;
+$$;
+
+revoke all on function public.create_songbattle_room(uuid, text) from public;
+revoke all on function public.join_songbattle_room(text, uuid, text) from public;
+revoke all on function public.get_songbattle_room_state(text, uuid, uuid) from public;
+revoke all on function public.submit_songbattle_room_song(text, uuid, text, text) from public;
+revoke all on function public.delete_songbattle_room_song(text, uuid, uuid) from public;
+revoke all on function public.kick_songbattle_room_member(text, uuid, uuid) from public;
+revoke all on function public.leave_songbattle_room(text, uuid) from public;
+revoke all on function public.close_songbattle_room(text, uuid) from public;
+grant execute on function public.create_songbattle_room(uuid, text) to anon, authenticated;
+grant execute on function public.join_songbattle_room(text, uuid, text) to anon, authenticated;
+grant execute on function public.get_songbattle_room_state(text, uuid, uuid) to anon, authenticated;
+grant execute on function public.submit_songbattle_room_song(text, uuid, text, text) to anon, authenticated;
+grant execute on function public.delete_songbattle_room_song(text, uuid, uuid) to anon, authenticated;
+grant execute on function public.kick_songbattle_room_member(text, uuid, uuid) to anon, authenticated;
+grant execute on function public.leave_songbattle_room(text, uuid) to anon, authenticated;
+grant execute on function public.close_songbattle_room(text, uuid) to anon, authenticated;
