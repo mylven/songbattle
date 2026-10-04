@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0a10">
+  <meta name="description" content="Két dal, egy párbaj. Hallgasd meg, válassz, és döntsd el, melyik szám legyen a Songbattle bajnoka!">
+  <title>Songbattle — Két dal. Egy győztes.</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #0b0a10;
+      --surface: #13121b;
+      --surface-raised: #1a1923;
+      --text: #f6f3ff;
+      --muted: #9d99ac;
+      --line: rgba(255, 255, 255, .09);
+      --purple: #a58bff;
+      --pink: #ff75b8;
+      --green: #9af2bd;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-width: 320px;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(115, 72, 186, .15), transparent 38rem),
+        var(--background);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, a { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--purple); outline-offset: 4px; }
+    .wrap { width: min(1100px, calc(100% - 48px)); margin-inline: auto; }
+
+    header { height: 78px; border-bottom: 1px solid var(--line); }
+    .nav { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 850; letter-spacing: -.8px; }
+    .brand-mark {
+      display: grid; width: 34px; height: 34px; place-items: center;
+      border-radius: 11px; color: #120d1a;
+      background: linear-gradient(135deg, #c2a9ff, #ff83c1);
+      box-shadow: 0 4px 22px rgba(191, 132, 255, .22);
+    }
+    .brand-mark svg { width: 18px; height: 18px; }
+    .nav-links { display: flex; align-items: center; gap: 32px; color: #c5c1d0; font-size: 13px; }
+    .nav-links a:hover { color: white; }
+    .nav-cta { padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; color: white !important; }
+
+    .hero { padding: 68px 0 36px; text-align: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px;
+      border: 1px solid rgba(197, 173, 255, .19); border-radius: 999px;
+      background: rgba(166, 132, 255, .08); color: #cbb8ff;
+      font-size: 10px; font-weight: 750; letter-spacing: 1.25px; text-transform: uppercase;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px rgba(154, 242, 189, .8); }
+    h1 { margin: 18px 0 12px; font-size: clamp(42px, 7vw, 70px); line-height: .98; letter-spacing: -4.8px; }
+    h1 span { background: linear-gradient(105deg, #c1a8ff 10%, #ff94c7 92%); background-clip: text; color: transparent; }
+    .hero-copy { max-width: 470px; margin: 0 auto; color: var(--muted); font-size: 15px; line-height: 1.7; }
+
+    .battle-section { padding: 26px 0 72px; }
+    .battle-topline { display: flex; justify-content: space-between; align-items: center; margin: 0 2px 16px; }
+    .battle-meta { display: flex; align-items: center; gap: 16px; }
+    .round-label, .round-count { color: var(--muted); font-size: 12px; }
+    .round-count { display: inline-flex; align-items: center; gap: 7px; }
+    .connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #e8b665; }
+    .round-count[data-state="connected"] .connection-dot { background: var(--green); box-shadow: 0 0 10px rgba(154,242,189,.55); }
+    .round-count[data-state="error"] .connection-dot { background: #ff7893; }
+    .round-label { display: inline-flex; align-items: center; gap: 8px; }
+    .round-label svg { width: 14px; height: 14px; color: var(--purple); }
+    .battle-card {
+      position: relative; overflow: hidden; padding: 26px;
+      border: 1px solid var(--line); border-radius: 23px;
+      background: linear-gradient(145deg, rgba(27, 25, 37, .97), rgba(17, 16, 24, .98));
+      box-shadow: 0 28px 90px rgba(0, 0, 0, .27);
+    }
+    .battle-card::before {
+      position: absolute; top: -130px; left: 50%; width: 420px; height: 260px;
+      border-radius: 50%; background: rgba(139, 91, 207, .09); filter: blur(65px);
+      content: ""; transform: translateX(-50%); pointer-events: none;
+    }
+    .versus-grid { position: relative; display: grid; grid-template-columns: 1fr 56px 1fr; align-items: center; gap: 20px; }
+    .song { min-width: 0; }
+    .cover {
+      position: relative; display: grid; min-height: 222px; overflow: hidden; place-items: center;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 15px;
+      isolation: isolate;
+    }
+    .cover::before, .cover::after { position: absolute; z-index: -1; border-radius: 50%; content: ""; }
+    .cover::before { width: 205px; height: 205px; border: 1px solid rgba(255,255,255,.27); box-shadow: 0 0 0 17px rgba(255,255,255,.035), 0 0 0 36px rgba(255,255,255,.035); }
+    .cover::after { width: 66px; height: 66px; border: 13px solid rgba(255,255,255,.2); background: rgba(17,14,28,.75); box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+    .cover-art { position: absolute; inset: 0; z-index: -2; }
+    .cover-tag { position: absolute; top: 13px; left: 13px; padding: 6px 9px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: rgba(11,10,16,.36); font-size: 9px; font-weight: 800; letter-spacing: 1px; }
+    .cover-number { position: absolute; right: 13px; bottom: 6px; color: rgba(255,255,255,.19); font-size: 39px; font-weight: 850; letter-spacing: -3px; }
+    .song-info { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 16px 2px 0; }
+    .song-copy { min-width: 0; }
+    .song-title { overflow: hidden; margin: 0 0 5px; font-size: clamp(18px, 2.3vw, 24px); font-weight: 780; letter-spacing: -.8px; text-overflow: ellipsis; white-space: nowrap; }
+    .song-artist { color: var(--muted); font-size: 13px; }
+    .song-style { flex: 0 0 auto; padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; color: #c8c3d3; font-size: 10px; }
+    .versus { display: grid; width: 48px; height: 48px; place-items: center; justify-self: center; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: #1d1a28; color: #dad5e4; font-size: 12px; font-weight: 850; box-shadow: 0 0 30px rgba(0,0,0,.3); }
+    .vote-button {
+      display: flex; width: 100%; justify-content: center; align-items: center; gap: 9px;
+      margin-top: 18px; padding: 13px; border: 1px solid rgba(198,176,255,.2); border-radius: 11px;
+      background: rgba(170,137,255,.09); color: #e5dcff; cursor: pointer;
+      font-size: 12px; font-weight: 750; transition: background .18s, border-color .18s, transform .18s;
+    }
+    .vote-button:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(198,176,255,.56); background: rgba(170,137,255,.17); }
+    .vote-button:disabled { cursor: default; opacity: .78; }
+    .vote-button svg { width: 15px; height: 15px; }
+    .song[data-side="right"] .vote-button { border-color: rgba(255,143,196,.2); background: rgba(255,117,184,.08); color: #ffdaeb; }
+    .song[data-side="right"] .vote-button:hover:not(:disabled) { border-color: rgba(255,143,196,.55); background: rgba(255,117,184,.16); }
+    .song[data-side="right"] .vote-button:focus-visible { outline-color: var(--pink); }
+    .results { position: relative; margin-top: 24px; padding: 17px 17px 15px; border: 1px solid var(--line); border-radius: 13px; background: rgba(6,6,10,.28); }
+    .results-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 11px; font-weight: 750; }
+    .results-heading span:last-child { color: var(--muted); font-weight: 500; }
+    .results-heading span:last-child { text-align: right; }
+    .result-track { display: grid; grid-template-columns: minmax(0, 1fr) 42px; align-items: center; gap: 12px; }
+    .result-track + .result-track { margin-top: 10px; }
+    .bar { height: 6px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.08); }
+    .bar-fill { width: 50%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #9377fa, #d3a5ff); transition: width .45s ease; }
+    .result-track[data-side="right"] .bar-fill { background: linear-gradient(90deg, #fc76b4, #ffa7b9); }
+    .percentage { color: #d4cede; font-size: 11px; text-align: right; }
+    .battle-bottom { position: relative; display: flex; min-height: 51px; justify-content: space-between; align-items: center; gap: 12px; padding-top: 18px; }
+    .vote-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .vote-note strong { color: #d5cced; font-weight: 650; }
+    .next-button { display: none; padding: 10px 15px; border: 0; border-radius: 9px; background: var(--text); color: #17131e; cursor: pointer; font-size: 11px; font-weight: 800; }
+    .next-button:hover { background: #d9ccff; }
+    .next-button.visible { display: inline-flex; align-items: center; gap: 8px; }
+    .next-button svg { width: 14px; height: 14px; }
+
+    .section { padding: 0 0 74px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 17px; }
+    .section-heading h2 { margin: 0; font-size: 20px; letter-spacing: -.65px; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .step { min-height: 133px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: rgba(19,18,27,.75); }
+    .step-number { display: grid; width: 27px; height: 27px; place-items: center; margin-bottom: 13px; border-radius: 8px; background: rgba(169,139,255,.12); color: #cdbbff; font-size: 11px; font-weight: 800; }
+    .step h3 { margin: 0 0 5px; font-size: 13px; }
+    .step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    footer { border-top: 1px solid var(--line); }
+    .footer-content { display: flex; min-height: 78px; justify-content: space-between; align-items: center; gap: 20px; color: var(--muted); font-size: 11px; }
+    .footer-content strong { color: #dbd5e7; }
+
+    @media (max-width: 640px) {
+      .wrap { width: min(100% - 30px, 500px); }
+      header { height: 66px; }
+      .nav-links { gap: 14px; font-size: 12px; }
+      .nav-links a:first-child { display: none; }
+      .nav-cta { padding: 8px 12px; }
+      .hero { padding: 55px 0 27px; }
+      h1 { letter-spacing: -3px; }
+      .hero-copy { max-width: 350px; font-size: 13px; }
+      .battle-section { padding: 20px 0 58px; }
+      .battle-card { padding: 15px; border-radius: 18px; }
+      .versus-grid { grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr); gap: 8px; }
+      .cover { min-height: 145px; border-radius: 12px; }
+      .cover::before { width: 130px; height: 130px; box-shadow: 0 0 0 11px rgba(255,255,255,.035), 0 0 0 24px rgba(255,255,255,.035); }
+      .cover::after { width: 47px; height: 47px; border-width: 9px; }
+      .cover-tag { top: 9px; left: 8px; padding: 5px 7px; font-size: 8px; }
+      .cover-number { right: 8px; bottom: 2px; font-size: 30px; }
+      .song-info { display: block; padding-top: 12px; }
+      .song-title { font-size: 16px; }
+      .song-artist { font-size: 11px; }
+      .song-style { display: inline-block; margin-top: 8px; padding: 5px 7px; font-size: 9px; }
+      .versus { width: 32px; height: 32px; font-size: 9px; }
+      .vote-button { min-height: 43px; gap: 6px; margin-top: 13px; padding: 9px 5px; font-size: 10px; }
+      .vote-button svg { width: 13px; height: 13px; }
+      .results { margin-top: 17px; padding: 13px; }
+      .battle-bottom { align-items: flex-start; }
+      .vote-note { max-width: 205px; }
+      .next-button { padding: 9px 10px; font-size: 10px; }
+      .section { padding-bottom: 55px; }
+      .steps { grid-template-columns: 1fr; }
+      .step { min-height: auto; padding: 14px; }
+      .step-number { float: left; margin: 0 12px 0 0; }
+      .footer-content { min-height: 72px; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 15px 0; text-align: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav wrap" aria-label="Fő navigáció">
+      <a class="brand" href="#" aria-label="Songbattle főoldal">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13M9 18c0 1.1-1.6 2-3.5 2S2 19.1 2 18s1.6-2 3.5-2S9 16.9 9 18Zm12-2c0 1.1-1.6 2-3.5 2S14 16.1 14 15s1.6-2 3.5-2 3.5.9 3.5 2ZM9 9l12-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        songbattle
+      </a>
+      <div class="nav-links">
+        <a href="#how-it-works">Hogyan működik?</a>
+        <a class="nav-cta" href="#battle">Párbaj indítása <span aria-hidden="true">↗</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span> A mai zenei párbaj</div>
+      <h1 id="hero-title">Két dal. <span>Egy győztes.</span></h1>
+      <p class="hero-copy">A te füled dönt. Válaszd ki, melyik szám pörögjön tovább, és lépj a következő párbajra!</p>
+    </section>
+
+    <section class="battle-section wrap" id="battle" aria-labelledby="battle-heading">
+      <div class="battle-topline">
+        <div class="round-label">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.36-6.36-2.12 2.12M7.76 16.24l-2.12 2.12m12.72 0-2.12-2.12M7.76 7.76 5.64 5.64M15 9l-6 6m0-6 6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span id="battle-heading">A mai összecsapás</span>
+        </div>
+        <div class="battle-meta">
+          <span class="round-count" id="round-count">— / — párbaj</span>
+          <span class="round-count" id="connection-status" data-state="loading" role="status" aria-live="polite"><span class="connection-dot" aria-hidden="true"></span><span id="connection-label">Kapcsolódás…</span></span>
+        </div>
+      </div>
+
+      <div class="battle-card">
+        <div class="versus-grid" id="songs"></div>
+        <div class="results" id="results" aria-live="polite" hidden>
+          <div class="results-heading"><span>Élő eredmény</span><span id="vote-total">Adatok betöltése…</span></div>
+          <div id="result-tracks"></div>
+        </div>
+        <div class="battle-bottom">
+          <p class="vote-note" id="vote-note" role="status" aria-live="polite">Kapcsolódás a szavazáshoz…</p>
+          <button class="next-button" id="next-button" type="button">
+            Következő párbaj
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="how-it-works" aria-labelledby="how-title">
+      <div class="section-heading">
+        <h2 id="how-title">Egyszerű, mint egy refrén</h2>
+        <p>Nincs regisztráció. Csak te és a zenék.</p>
+      </div>
+      <div class="steps">
+        <article class="step">
+          <div class="step-number">01</div>
+          <h3>Ismerd meg a párost</h3>
+          <p>Két dal áll szemben egymással. Nézd meg, melyik illik ma jobban a hangulatodhoz.</p>
+        </article>
+        <article class="step">
+          <div class="step-number">02</div>
+          <h3>Add le a szavazatod</h3>
+          <p>Koppints a kedvencedre. Ezen a böngészőn párbajonként egyszer szavazhatsz.</p>
+        </article>
+        <article class="step">
+          <div class="step-number">03</div>
+          <h3>Jöhet a következő kör</h3>
+          <p>Nézd meg a párbaj állását, aztán döntsd el, melyik dal nyerje a következő összecsapást.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-content wrap">
+      <span><strong>songbattle</strong> — a zene dönt, te szavazol.</span>
+      <span>A szavazatok élőben, közösen frissülnek.</span>
+      <span>© <span id="year"></span> Songbattle</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js"></script>
+  <script>
+    const voterStorageKey = "songbattle-voter-v1";
+    const palette = [
+      ["linear-gradient(145deg, #541b72, #e14d71 55%, #ffb45d)", "linear-gradient(145deg, #104d62, #2b9caa 55%, #a9dcbb)"],
+      ["linear-gradient(145deg, #a33f35, #eb8051 55%, #f4c477)", "linear-gradient(145deg, #4b184f, #c53d75 55%, #fa9b86)"],
+      ["linear-gradient(145deg, #41337a, #9c68bd 55%, #f4a8aa)", "linear-gradient(145deg, #71523f, #db9260 55%, #f0cd92)"]
+    ];
+    const songsElement = document.querySelector("#songs");
+    const resultsElement = document.querySelector("#results");
+    const resultTracksElement = document.querySelector("#result-tracks");
+    const nextButton = document.querySelector("#next-button");
+    const voteNote = document.querySelector("#vote-note");
+    const connectionStatus = document.querySelector("#connection-status");
+    const connectionLabel = document.querySelector("#connection-label");
+    const icon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    let supabaseClient;
+    let voterId;
+    let battles = [];
+    let round = 0;
+    let busy = true;
+
+    function setConnection(status, message) {
+      connectionStatus.dataset.state = status;
+      connectionLabel.textContent = message;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function getVoterId() {
+      const saved = localStorage.getItem(voterStorageKey);
+      if (saved && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved)) {
+        return saved;
+      }
+      if (!crypto.randomUUID) throw new Error("Ez a böngésző nem támogatja a biztonságos szavazóazonosító létrehozását.");
+      const id = crypto.randomUUID();
+      localStorage.setItem(voterStorageKey, id);
+      return id;
+    }
+
+    function render() {
+      if (!battles.length) return;
+      const battle = battles[round];
+      const chosen = battle.my_choice;
+      const songs = [
+        { title: battle.song_a_title, artist: battle.song_a_artist, style: battle.genre, count: battle.votes_a },
+        { title: battle.song_b_title, artist: battle.song_b_artist, style: battle.genre, count: battle.votes_b }
+      ];
+      document.querySelector("#round-count").textContent = `${round + 1} / ${battles.length} párbaj`;
+      songsElement.innerHTML = songs.map((song, index) => `
+        ${index === 1 ? '<div class="versus" aria-label="versus">VS</div>' : ""}
+        <article class="song" data-side="${index === 0 ? "left" : "right"}">
+          <div class="cover" role="img" aria-label="${escapeHtml(song.title)} hangulatkártyája">
+            <div class="cover-art" style="background:${palette[round % palette.length][index]}"></div>
+            <span class="cover-tag">TRACK 0${index + 1}</span>
+            <span class="cover-number">0${round + 1}</span>
+          </div>
+          <div class="song-info">
+            <div class="song-copy">
+              <h3 class="song-title">${escapeHtml(song.title)}</h3>
+              <div class="song-artist">${escapeHtml(song.artist)}</div>
+            </div>
+            <span class="song-style">${escapeHtml(song.style)}</span>
+          </div>
+          <button class="vote-button" type="button" data-vote="${index}" ${busy || chosen !== null ? "disabled" : ""} aria-label="Szavazok erre: ${escapeHtml(song.title)} — ${escapeHtml(song.artist)}">
+            ${icon}<span>${chosen === index ? "Erre szavaztál" : chosen !== null ? "Szavazat leadva" : "Erre szavazok"}</span>
+          </button>
+        </article>`).join("");
+
+      document.querySelectorAll("[data-vote]").forEach(button => {
+        button.addEventListener("click", () => castVote(Number(button.dataset.vote)));
+      });
+      const voted = chosen !== null;
+      nextButton.classList.toggle("visible", voted);
+      nextButton.disabled = !voted || busy;
+      voteNote.textContent = busy
+        ? "A szavazat feldolgozása folyamatban…"
+        : voted
+          ? "Szavazatod rögzítve. A párbaj állása élőben frissül."
+          : "Egy párbaj, egy szavazat. Hallgass a füledre.";
+      renderResults(songs);
+    }
+
+    function renderResults(songs) {
+      const counts = songs.map(song => Number(song.count));
+      const total = counts[0] + counts[1];
+      const percentages = counts.map(count => total ? Math.round(count / total * 100) : 0);
+      document.querySelector("#vote-total").textContent = `${total} szavazat`;
+      resultTracksElement.innerHTML = songs.map((song, index) => `
+        <div class="result-track" data-side="${index === 0 ? "left" : "right"}">
+          <div class="bar" role="progressbar" aria-label="${escapeHtml(song.title)} eredménye" aria-valuenow="${percentages[index]}" aria-valuemin="0" aria-valuemax="100">
+            <div class="bar-fill" style="width:${percentages[index]}%"></div>
+          </div>
+          <span class="percentage">${percentages[index]}%</span>
+        </div>`).join("");
+      resultsElement.hidden = false;
+    }
+
+    async function refreshBattles() {
+      const { data, error } = await supabaseClient.rpc("get_songbattle_state", { p_voter_id: voterId });
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("Nincsenek párbajok az adatbázisban. Futtasd le a Supabase SQL-beállítást.");
+      }
+      battles = data.map(battle => ({
+        ...battle,
+        my_choice: battle.my_choice === null ? null : Number(battle.my_choice),
+        votes_a: Number(battle.votes_a),
+        votes_b: Number(battle.votes_b)
+      }));
+      round = Math.min(round, battles.length - 1);
+      busy = false;
+      render();
+    }
+
+    async function castVote(choice) {
+      const battle = battles[round];
+      if (busy || !battle || battle.my_choice !== null) return;
+      busy = true;
+      render();
+      try {
+        const { data, error } = await supabaseClient.rpc("cast_songbattle_vote", {
+          p_battle_id: battle.id,
+          p_choice: choice,
+          p_voter_id: voterId
+        });
+        if (error) throw error;
+        if (data !== true) {
+          voteNote.textContent = "Erről a párbajról már van szavazatod.";
+        }
+        await refreshBattles();
+      } catch (error) {
+        console.error("A szavazat elküldése nem sikerült.", error);
+        busy = false;
+        render();
+        voteNote.textContent = "Nem sikerült leadni a szavazatot. Ellenőrizd a kapcsolatot, majd próbáld újra.";
+      }
+    }
+
+    nextButton.addEventListener("click", () => {
+      if (battles[round]?.my_choice === null || busy) return;
+      round = (round + 1) % battles.length;
+      render();
+      document.querySelector("#battle").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    async function start() {
+      document.querySelector("#year").textContent = new Date().getFullYear();
+      try {
+        const config = window.SONGBATTLE_CONFIG;
+        if (!config?.url || !config?.anonKey ||
+            config.url.includes("YOUR_PROJECT_ID") || config.anonKey.includes("YOUR_SUPABASE")) {
+          throw new Error("A Supabase nincs beállítva. Kövesd a README.md GitHub Pages-beállításait.");
+        }
+        if (!window.supabase?.createClient) {
+          throw new Error("Nem sikerült betölteni a Supabase klienst. Ellenőrizd az internetkapcsolatot.");
+        }
+        supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+        voterId = getVoterId();
+        await refreshBattles();
+        setConnection("connected", "Élő kapcsolat");
+        supabaseClient
+          .channel("songbattle-live-results")
+          .on("postgres_changes", { event: "*", schema: "public", table: "songbattle_results" }, () => {
+            refreshBattles().catch(error => {
+              console.error("Az élő eredmények frissítése nem sikerült.", error);
+              setConnection("error", "Frissítési hiba");
+            });
+          })
+          .subscribe(status => {
+            if (status === "SUBSCRIBED") setConnection("connected", "Élő kapcsolat");
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+              setConnection("error", "Újracsatlakozás…");
+            }
+          });
+      } catch (error) {
+        console.error("Songbattle inicializálása nem sikerült.", error);
+        busy = true;
+        setConnection("error", "Beállítás szükséges");
+        voteNote.textContent = error.message || "Nem sikerült csatlakozni a szavazáshoz.";
+        document.querySelector("#vote-total").textContent = "Az eredmények nem érhetők el";
+        songsElement.innerHTML = '<p role="alert">A szavazás nem érhető el. Ellenőrizd a Supabase beállítását a README.md-ben.</p>';
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>
