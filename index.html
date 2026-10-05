@@ -317,6 +317,7 @@
             </div>
             <div class="room-actions">
               <button class="room-button secondary" id="copy-room-code" type="button">Kód másolása</button>
+              <button class="room-button secondary" id="copy-room-link" type="button">Meghívó link másolása</button>
               <button class="room-button secondary" id="leave-room" type="button">Kilépés</button>
               <button class="room-button danger" id="close-room" type="button" hidden>Szoba bezárása</button>
             </div>
@@ -960,6 +961,19 @@
         roomStatus.textContent = `Szobakód: ${roomSession.code}`;
       }
     });
+    document.querySelector("#copy-room-link").addEventListener("click", async () => {
+      const link = new URL(location.href);
+      link.search = "";
+      link.hash = "rooms";
+      link.searchParams.set("room", roomSession.code);
+      try {
+        await navigator.clipboard.writeText(link.href);
+        roomStatus.textContent = "A meghívó link a vágólapra másolva.";
+      } catch (error) {
+        console.error("A link másolása nem sikerült.", error);
+        roomStatus.textContent = `Meghívó link: ${link.href}`;
+      }
+    });
     document.querySelector("#leave-room").addEventListener("click", () => leaveRoom().catch(error => {
       console.error("A szobából kilépés nem sikerült.", error);
       roomError.textContent = roomErrorMessage(error);
@@ -1081,6 +1095,11 @@
 
     async function start() {
       document.querySelector("#year").textContent = new Date().getFullYear();
+      const invitedCode = new URLSearchParams(location.search).get("room")?.toUpperCase();
+      if (invitedCode && /^[A-F0-9]{6}$/.test(invitedCode)) {
+        document.querySelector("#join-code").value = invitedCode;
+        document.querySelector("#join-name").focus();
+      }
       try {
         const config = window.SONGBATTLE_CONFIG;
         if (!config?.url || !config?.anonKey ||
