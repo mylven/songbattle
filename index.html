@@ -884,11 +884,9 @@
 
     const siteFooter = document.querySelector("footer");
     function updateFooter(pointerNearBottom) {
-      const atPageBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      siteFooter.classList.toggle("visible", pointerNearBottom || atPageBottom || siteFooter.matches(":hover"));
+      siteFooter.classList.toggle("visible", pointerNearBottom || siteFooter.matches(":hover"));
     }
     window.addEventListener("mousemove", event => updateFooter(window.innerHeight - event.clientY <= 40), { passive: true });
-    window.addEventListener("scroll", () => updateFooter(false), { passive: true });
     document.addEventListener("mouseleave", () => updateFooter(false));
 
     start();
