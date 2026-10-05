@@ -183,6 +183,25 @@
     .room-submit-form label { display: grid; gap: 6px; color: #d9d4e4; font-size: 10px; font-weight: 650; }
     .room-status { min-height: 16px; color: var(--muted); font-size: 10px; }
     [hidden] { display: none !important; }
+    .rb { display: grid; gap: 14px; margin-bottom: 15px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.13); }
+    .rb-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+    .rb-head h3 { margin: 0; font-size: 14px; }
+    .rb-matches { display: grid; gap: 12px; }
+    .rb-match { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: stretch; gap: 10px; }
+    .rb-vs { align-self: center; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .rb-song { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); }
+    .rb-song.chosen { border-color: rgba(198,176,255,.6); background: rgba(170,137,255,.12); }
+    .rb-song.bye { opacity: .75; justify-content: center; text-align: center; }
+    .rb-title { overflow-wrap: anywhere; margin: 0; font-size: 12px; font-weight: 730; }
+    .rb-votes { color: var(--muted); font-size: 10px; }
+    .rb-champion { padding: 18px; border: 1px solid rgba(198,176,255,.35); border-radius: 12px; background: linear-gradient(135deg, rgba(170,137,255,.14), rgba(255,117,184,.1)); text-align: center; }
+    .rb-champion h3 { margin: 0 0 6px; font-size: 18px; }
+    .rb-board { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: rank; }
+    .rb-board li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); font-size: 12px; counter-increment: rank; }
+    .rb-board li::before { content: counter(rank) "."; width: 24px; color: #c4afff; font-weight: 800; }
+    .rb-board .name { flex: 1; min-width: 0; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .rb-board .score { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    @media (max-width: 640px) { .rb-match { grid-template-columns: 1fr; } .rb-vs { justify-self: center; } }
     footer { border-top: 1px solid var(--line); }
     .footer-content { display: flex; min-height: 78px; justify-content: space-between; align-items: center; gap: 20px; color: var(--muted); font-size: 11px; }
     .footer-content strong { color: #dbd5e7; }
@@ -309,6 +328,20 @@
             <button class="room-button" id="submit-song-button" type="submit">Zene beküldése</button>
           </form>
           <p class="room-status" id="room-status" role="status" aria-live="polite"></p>
+          <section class="rb" id="room-battle" aria-labelledby="rb-title" hidden>
+            <div class="rb-head">
+              <h3 id="rb-title">Battle</h3>
+              <div class="room-actions" id="rb-host-actions" hidden>
+                <button class="room-button" id="rb-close-round" type="button">Forduló lezárása</button>
+                <button class="room-button secondary" id="rb-reset" type="button">Új battle</button>
+              </div>
+            </div>
+            <div id="rb-body"></div>
+          </section>
+          <div class="room-actions" id="rb-start-box" hidden style="margin-bottom:15px">
+            <button class="room-button" id="rb-start" type="button">Battle indítása</button>
+            <span class="room-hint">Legalább 2 beküldött zene kell. Indítás után nem lehet újat beküldeni.</span>
+          </div>
           <div class="room-layout">
             <section class="room-submissions" aria-labelledby="room-submissions-title">
               <h3 id="room-submissions-title">Beküldött zenék</h3>
@@ -539,6 +572,77 @@
       });
       roomEntry.hidden = true;
       roomView.hidden = false;
+      renderRoomBattle(room, isHost);
+    }
+
+    function songName(song) {
+      return song.title || `${song.provider === "spotify" ? "Spotify" : "YouTube"}-zene`;
+    }
+
+    function songCard(song, side, match, chosen) {
+      if (!song) return `<div class="rb-song bye"><p class="rb-title">Szabad kör — automatikusan továbbjut</p></div>`;
+      const voted = match.my_choice !== null && match.my_choice !== undefined;
+      const count = side === 0 ? match.votes_a : match.votes_b;
+      return `<div class="rb-song${chosen ? " chosen" : ""}">
+        <p class="rb-title">${escapeHtml(songName(song))}</p>
+        <div class="submission-meta">${escapeHtml(song.member_name)} · <a class="submission-link" href="${escapeHtml(song.url)}" target="_blank" rel="noopener noreferrer">Meghallgatom ↗</a></div>
+        ${voted ? `<div class="rb-votes">${count} szavazat</div>` : ""}
+        <button class="room-button" type="button" data-room-vote="${side}" data-match="${escapeHtml(match.id)}" ${voted || match.decided ? "disabled" : ""}>${chosen ? "Erre szavaztál" : voted ? "Szavazat leadva" : "Erre szavazok"}</button>
+      </div>`;
+    }
+
+    function renderRoomBattle(room, isHost) {
+      const status = room.status || "lobby";
+      const section = document.querySelector("#room-battle");
+      const body = document.querySelector("#rb-body");
+      document.querySelector("#submit-song-form").hidden = status !== "lobby";
+      document.querySelector("#rb-start-box").hidden = !(isHost && status === "lobby");
+      section.hidden = status === "lobby";
+      document.querySelector("#rb-host-actions").hidden = !isHost;
+      document.querySelector("#rb-close-round").hidden = status !== "battle";
+      document.querySelector("#rb-reset").hidden = status !== "finished";
+      if (status === "lobby") { body.innerHTML = ""; return; }
+
+      if (status === "battle") {
+        const last = room.current_round === room.total_rounds;
+        document.querySelector("#rb-title").textContent = last ? "Döntő" : `${room.current_round}. forduló / ${room.total_rounds}`;
+        body.innerHTML = `<div class="rb-matches">${room.matches.map(match => `
+          <div class="rb-match">${songCard(match.a, 0, match, match.my_choice === 0)}<span class="rb-vs">VS</span>${songCard(match.b, 1, match, match.my_choice === 1)}</div>`).join("")}</div>
+          <p class="room-hint">${isHost ? "A forduló lezárásakor a több szavazatot kapott dal jut tovább (döntetlennél sorsolás)." : "A host zárja le a fordulót, utána jön a következő."}</p>`;
+        body.querySelectorAll("[data-room-vote]").forEach(button => {
+          button.addEventListener("click", () => castRoomVote(button.dataset.match, Number(button.dataset.roomVote)));
+        });
+        return;
+      }
+
+      document.querySelector("#rb-title").textContent = "A battle véget ért";
+      body.innerHTML = `<div class="rb-champion">
+          <div class="submission-meta">Győztes dal</div>
+          <h3>${escapeHtml(songName(room.champion))}</h3>
+          <div class="submission-meta">Beküldte: ${escapeHtml(room.champion.member_name)} · <a class="submission-link" href="${escapeHtml(room.champion.url)}" target="_blank" rel="noopener noreferrer">Megnyitás ↗</a></div>
+        </div>
+        <h3>Ranglista</h3>
+        <ol class="rb-board">${room.leaderboard.map(row => `<li><span class="name">${escapeHtml(row.member_name)}</span><span class="score">${row.votes} szavazat · ${row.songs} dal</span></li>`).join("")}</ol>`;
+    }
+
+    async function roomRpc(name, extra = {}) {
+      roomError.textContent = "";
+      try {
+        const { error } = await supabaseClient.rpc(name, {
+          p_room_code: roomSession.code,
+          ...(roomSession.hostToken ? { p_host_token: roomSession.hostToken } : {}),
+          ...extra
+        });
+        if (error) throw error;
+        await refreshRoom();
+      } catch (error) {
+        console.error("A művelet nem sikerült.", error);
+        roomError.textContent = roomErrorMessage(error);
+      }
+    }
+
+    function castRoomVote(matchId, choice) {
+      return roomRpc("cast_songbattle_room_vote", { p_member_id: roomSession.memberId, p_match_id: matchId, p_choice: choice });
     }
 
     async function refreshRoom() {
@@ -753,6 +857,13 @@
       roomError.textContent = roomErrorMessage(error);
     }));
     document.querySelector("#close-room").addEventListener("click", closeRoom);
+    document.querySelector("#rb-start").addEventListener("click", () => roomRpc("start_songbattle_room_battle"));
+    document.querySelector("#rb-close-round").addEventListener("click", () => {
+      if (confirm("Lezárod a fordulót? A szavazatok alapján eldől, ki jut tovább.")) roomRpc("close_songbattle_room_round");
+    });
+    document.querySelector("#rb-reset").addEventListener("click", () => {
+      if (confirm("Új battle indul? A mostani eredmények törlődnek.")) roomRpc("reset_songbattle_room_battle");
+    });
 
     function render() {
       if (!battles.length) return;
