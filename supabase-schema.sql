@@ -218,6 +218,9 @@ create table if not exists public.songbattle_room_matches (
   unique (room_id, round, slot)
 );
 
+alter table public.songbattle_room_matches
+  add column if not exists decided_at timestamptz;
+
 create table if not exists public.songbattle_room_votes (
   match_id uuid not null references public.songbattle_room_matches(id) on delete cascade,
   member_id uuid not null,
@@ -270,9 +273,10 @@ declare
   v_len integer := array_length(p_ids, 1);
 begin
   for i in 1..ceil(v_len / 2.0)::integer loop
-    insert into public.songbattle_room_matches (room_id, round, slot, sub_a, sub_b, winner_id)
+    insert into public.songbattle_room_matches (room_id, round, slot, sub_a, sub_b, winner_id, decided_at)
     values (p_room_id, p_round, i, p_ids[2 * i - 1], p_ids[2 * i],
-      case when 2 * i > v_len then p_ids[2 * i - 1] end);
+      case when 2 * i > v_len then p_ids[2 * i - 1] end,
+      case when 2 * i > v_len then clock_timestamp() end);
   end loop;
 end;
 $$;
@@ -474,8 +478,31 @@ begin
         'decided', mt.winner_id is not null
       ) order by mt.slot)
       from public.songbattle_room_matches mt
-      where mt.room_id = v_room.id and mt.round = v_room.current_round
+      where mt.id = (
+        select m2.id from public.songbattle_room_matches m2
+        where m2.room_id = v_room.id and m2.round = v_room.current_round and m2.winner_id is null
+        order by m2.slot limit 1
+      )
     ), '[]'::jsonb) else '[]'::jsonb end,
+    'match_number', (select count(*) + 1 from public.songbattle_room_matches mt
+      where mt.room_id = v_room.id and mt.round = v_room.current_round
+        and mt.sub_b is not null and mt.winner_id is not null),
+    'match_total', (select count(*) from public.songbattle_room_matches mt
+      where mt.room_id = v_room.id and mt.round = v_room.current_round and mt.sub_b is not null),
+    'last_result', (
+      select jsonb_build_object(
+        'id', mt.id,
+        'round', mt.round,
+        'a', public.songbattle_song_json(mt.sub_a),
+        'b', public.songbattle_song_json(mt.sub_b),
+        'votes_a', (select count(*) from public.songbattle_room_votes v where v.match_id = mt.id and v.choice = 0),
+        'votes_b', (select count(*) from public.songbattle_room_votes v where v.match_id = mt.id and v.choice = 1),
+        'winner_id', mt.winner_id
+      )
+      from public.songbattle_room_matches mt
+      where mt.room_id = v_room.id and mt.sub_b is not null and mt.winner_id is not null
+      order by mt.decided_at desc limit 1
+    ),
     'champion', case when v_room.status = 'finished' then (
       select public.songbattle_song_json(mt.winner_id)
       from public.songbattle_room_matches mt
@@ -732,6 +759,11 @@ begin
     select 1 from public.songbattle_room_matches
     where id = p_match_id and room_id = v_room.id and round = v_room.current_round
       and winner_id is null and (p_choice = 0 or sub_b is not null)
+      and id = (
+        select m2.id from public.songbattle_room_matches m2
+        where m2.room_id = v_room.id and m2.round = v_room.current_round and m2.winner_id is null
+        order by m2.slot limit 1
+      )
   ) then raise exception 'Erre a párbajra már nem lehet szavazni.'; end if;
 
   insert into public.songbattle_room_votes (match_id, member_id, choice)
@@ -759,7 +791,7 @@ begin
 
   -- Egyenlő szavazatnál véletlen döntés.
   update public.songbattle_room_matches mt
-  set winner_id = case
+  set decided_at = clock_timestamp(), winner_id = case
     when (select count(*) from public.songbattle_room_votes v where v.match_id = mt.id and v.choice = 0)
        > (select count(*) from public.songbattle_room_votes v where v.match_id = mt.id and v.choice = 1) then mt.sub_a
     when (select count(*) from public.songbattle_room_votes v where v.match_id = mt.id and v.choice = 1)
@@ -767,7 +799,11 @@ begin
     when random() < 0.5 then mt.sub_a
     else mt.sub_b
   end
-  where mt.room_id = v_room.id and mt.round = v_room.current_round and mt.winner_id is null;
+  where mt.id = (
+    select m2.id from public.songbattle_room_matches m2
+    where m2.room_id = v_room.id and m2.round = v_room.current_round and m2.winner_id is null
+    order by m2.slot limit 1
+  );
 
   perform public.songbattle_advance(v_room.id);
   return true;

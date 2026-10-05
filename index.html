@@ -332,7 +332,7 @@
             <div class="rb-head">
               <h3 id="rb-title">Battle</h3>
               <div class="room-actions" id="rb-host-actions" hidden>
-                <button class="room-button" id="rb-close-round" type="button">Forduló lezárása</button>
+                <button class="room-button" id="rb-close-round" type="button">Szavazás lezárása</button>
                 <button class="room-button secondary" id="rb-reset" type="button">Új battle</button>
               </div>
             </div>
@@ -653,14 +653,22 @@
 
       if (status === "battle") {
         const last = room.current_round === room.total_rounds;
-        document.querySelector("#rb-title").textContent = last ? "Döntő" : `${room.current_round}. forduló / ${room.total_rounds}`;
+        document.querySelector("#rb-title").textContent = `${last ? "Döntő" : `${room.current_round}. forduló / ${room.total_rounds}`} · párbaj ${Math.min(room.match_number, room.match_total)} / ${room.match_total}`;
         lastMatches = room.matches;
-        const key = `battle:${room.current_round}:${room.matches.map(match => match.id).join(",")}`;
+        const key = `battle:${room.current_round}:${room.matches.map(match => match.id).join(",")}:${room.last_result?.id || ""}`;
         if (key !== rbKey) {
           rbKey = key;
-          body.innerHTML = `<div class="rb-matches">${room.matches.map(match => `
+          const result = room.last_result;
+          const winner = result && (result.winner_id === result.a.id ? result.a : result.b);
+          const winnerVotes = result && (result.winner_id === result.a.id ? result.votes_a : result.votes_b);
+          const loserVotes = result && (result.winner_id === result.a.id ? result.votes_b : result.votes_a);
+          body.innerHTML = `${result ? `<div class="rb-champion">
+              <div class="submission-meta">Előző párbaj győztese (${winnerVotes} – ${loserVotes})</div>
+              <h3>${escapeHtml(songName(winner))}</h3>
+              <div class="submission-meta">${escapeHtml(winner.member_name)}</div>
+            </div>` : ""}<div class="rb-matches">${room.matches.map(match => `
             <div class="rb-match">${songCard(match.a, 0, match)}<span class="rb-vs">VS</span>${songCard(match.b, 1, match)}</div>`).join("")}</div>
-            <p class="room-hint">${isHost ? "A forduló lezárásakor a több szavazatot kapott dal jut tovább (döntetlennél sorsolás)." : "A host zárja le a fordulót, utána jön a következő."}</p>`;
+            <p class="room-hint">${isHost ? "A szavazás lezárásakor a több szavazatot kapott dal nyer és továbbjut (döntetlennél sorsolás), aztán jön a következő párbaj." : "A host zárja le a szavazást, utána jön a következő párbaj."}</p>`;
         }
         updateMatches(room.matches);
         return;
@@ -949,7 +957,7 @@
     document.querySelector("#close-room").addEventListener("click", closeRoom);
     document.querySelector("#rb-start").addEventListener("click", () => roomRpc("start_songbattle_room_battle"));
     document.querySelector("#rb-close-round").addEventListener("click", () => {
-      if (confirm("Lezárod a fordulót? A szavazatok alapján eldől, ki jut tovább.")) roomRpc("close_songbattle_room_round");
+      if (confirm("Lezárod a szavazást? A több szavazatot kapott dal nyer.")) roomRpc("close_songbattle_room_round");
     });
     document.querySelector("#rb-reset").addEventListener("click", () => {
       if (confirm("Új battle indul? A mostani eredmények törlődnek.")) roomRpc("reset_songbattle_room_battle");
