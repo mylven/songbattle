@@ -289,6 +289,9 @@
               <label for="host-name">A neved
                 <input class="room-input" id="host-name" name="name" maxlength="32" autocomplete="nickname" placeholder="Például: Alex" required>
               </label>
+              <label for="max-songs">Ennyi dalt küldhet be egy ember
+                <input class="room-input" id="max-songs" type="number" min="1" max="20" value="3" required>
+              </label>
               <button class="room-button" type="submit">Szoba létrehozása</button>
             </form>
             <form class="room-form" id="join-room-form">
@@ -327,6 +330,7 @@
             </label>
             <button class="room-button" id="submit-song-button" type="submit">Zene beküldése</button>
           </form>
+          <p class="room-hint" id="song-limit-note"></p>
           <p class="room-status" id="room-status" role="status" aria-live="polite"></p>
           <section class="rb" id="room-battle" aria-labelledby="rb-title" hidden>
             <div class="rb-head">
@@ -643,7 +647,12 @@
       const status = room.status || "lobby";
       const section = document.querySelector("#room-battle");
       const body = document.querySelector("#rb-body");
-      document.querySelector("#submit-song-form").hidden = status !== "lobby";
+      const mySongs = room.submissions.filter(song => song.member_id === roomSession.memberId).length;
+      const limitReached = mySongs >= room.max_songs;
+      document.querySelector("#submit-song-form").hidden = status !== "lobby" || limitReached;
+      document.querySelector("#song-limit-note").textContent = status === "lobby"
+        ? `Beküldött dalaid: ${mySongs} / ${room.max_songs}${limitReached ? " — elérted a limitet." : ""}`
+        : "";
       document.querySelector("#rb-start-box").hidden = !(isHost && status === "lobby");
       section.hidden = status === "lobby";
       document.querySelector("#rb-host-actions").hidden = !isHost;
@@ -772,11 +781,12 @@
       }
     }
 
-    async function createRoom(name) {
+    async function createRoom(name, maxSongs) {
       const memberId = createUuid();
       const { data, error } = await supabaseClient.rpc("create_songbattle_room", {
         p_member_id: memberId,
-        p_display_name: name.trim()
+        p_display_name: name.trim(),
+        p_max_songs: Number(maxSongs)
       });
       if (error) throw error;
       saveRoomSession({ code: data.room_code, memberId, hostToken: data.host_token });
@@ -900,7 +910,7 @@
       setRoomBusy(form, true);
       roomEntryError.textContent = "";
       try {
-        await createRoom(document.querySelector("#host-name").value);
+        await createRoom(document.querySelector("#host-name").value, document.querySelector("#max-songs").value);
       } catch (error) {
         console.error("A szoba létrehozása nem sikerült.", error);
         roomEntryError.textContent = roomErrorMessage(error);

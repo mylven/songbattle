@@ -205,7 +205,8 @@ create table if not exists public.songbattle_room_submissions (
 alter table public.songbattle_rooms
   add column if not exists status text not null default 'lobby' check (status in ('lobby', 'battle', 'finished')),
   add column if not exists current_round integer not null default 0,
-  add column if not exists total_rounds integer not null default 0;
+  add column if not exists total_rounds integer not null default 0,
+  add column if not exists max_songs integer not null default 3 check (max_songs between 1 and 20);
 
 create table if not exists public.songbattle_room_matches (
   id uuid primary key default gen_random_uuid(),
@@ -312,9 +313,12 @@ begin
 end;
 $$;
 
+drop function if exists public.create_songbattle_room(uuid, text);
+
 create or replace function public.create_songbattle_room(
   p_member_id uuid,
-  p_display_name text
+  p_display_name text,
+  p_max_songs integer default 3
 )
 returns jsonb
 language plpgsql
@@ -330,12 +334,15 @@ begin
   if p_member_id is null or v_name is null or length(v_name) not between 1 and 32 then
     raise exception 'A név 1 és 32 karakter közötti legyen.';
   end if;
+  if p_max_songs is null or p_max_songs not between 1 and 20 then
+    raise exception 'Egy ember 1 és 20 közötti számú dalt küldhet be.';
+  end if;
 
   for attempt in 1..10 loop
     v_room_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
     begin
-      insert into public.songbattle_rooms (id, room_code, host_member_id, host_token)
-      values (v_room_id, v_room_code, p_member_id, v_host_token);
+      insert into public.songbattle_rooms (id, room_code, host_member_id, host_token, max_songs)
+      values (v_room_id, v_room_code, p_member_id, v_host_token, p_max_songs);
       exit;
     exception when unique_violation then
       if attempt = 10 then
@@ -466,6 +473,7 @@ begin
     'status', v_room.status,
     'current_round', v_room.current_round,
     'total_rounds', v_room.total_rounds,
+    'max_songs', v_room.max_songs,
     'matches', case when v_room.status = 'battle' then coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', mt.id,
@@ -560,6 +568,11 @@ begin
   ) then raise exception 'You are not a member of this room'; end if;
   if (select status from public.songbattle_rooms where id = v_room_id) <> 'lobby' then
     raise exception 'A battle már elindult, most nem küldhető be új zene.';
+  end if;
+  if (select count(*) from public.songbattle_room_submissions
+      where room_id = v_room_id and member_id = p_member_id)
+    >= (select max_songs from public.songbattle_rooms where id = v_room_id) then
+    raise exception 'Elérted a szobában beküldhető dalok maximális számát.';
   end if;
   if length(v_title) > 120 or length(v_url) > 500
     or v_url !~* '^https://(youtube\.com/|www\.youtube\.com/|music\.youtube\.com/|youtu\.be/|open\.spotify\.com/)'
@@ -677,7 +690,7 @@ begin
 end;
 $$;
 
-revoke all on function public.create_songbattle_room(uuid, text) from public;
+revoke all on function public.create_songbattle_room(uuid, text, integer) from public;
 revoke all on function public.join_songbattle_room(text, uuid, text) from public;
 revoke all on function public.get_songbattle_room_state(text, uuid, uuid) from public;
 revoke all on function public.submit_songbattle_room_song(text, uuid, text, text) from public;
@@ -685,7 +698,7 @@ revoke all on function public.delete_songbattle_room_song(text, uuid, uuid) from
 revoke all on function public.kick_songbattle_room_member(text, uuid, uuid) from public;
 revoke all on function public.leave_songbattle_room(text, uuid) from public;
 revoke all on function public.close_songbattle_room(text, uuid) from public;
-grant execute on function public.create_songbattle_room(uuid, text) to anon, authenticated;
+grant execute on function public.create_songbattle_room(uuid, text, integer) to anon, authenticated;
 grant execute on function public.join_songbattle_room(text, uuid, text) to anon, authenticated;
 grant execute on function public.get_songbattle_room_state(text, uuid, uuid) to anon, authenticated;
 grant execute on function public.submit_songbattle_room_song(text, uuid, text, text) to anon, authenticated;
