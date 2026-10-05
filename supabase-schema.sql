@@ -510,20 +510,21 @@ begin
     ) else null end,
     'leaderboard', case when v_room.status = 'finished' then coalesce((
       select jsonb_agg(jsonb_build_object(
-        'member_name', m.display_name, 'votes', t.votes, 'songs', t.songs
-      ) order by t.votes desc, m.display_name)
+        'member_name', t.member_name, 'title', t.title, 'url', t.url, 'votes', t.votes,
+        'is_winner', t.id = (select mw.winner_id from public.songbattle_room_matches mw
+          where mw.room_id = v_room.id and mw.round = v_room.current_round limit 1)
+      ) order by t.votes desc, t.member_name)
       from (
-        select ps.member_id, sum(ps.cnt) as votes, count(*) as songs
-        from (
-          select s.member_id, (
-            select count(*) from public.songbattle_room_votes v
-            join public.songbattle_room_matches mt on mt.id = v.match_id
-            where mt.room_id = v_room.id
-              and ((v.choice = 0 and mt.sub_a = s.id) or (v.choice = 1 and mt.sub_b = s.id))
-          ) as cnt
-          from public.songbattle_room_submissions s where s.room_id = v_room.id
-        ) ps group by ps.member_id
-      ) t join public.songbattle_room_members m on m.member_id = t.member_id
+        select s.id, s.title, s.url, m.display_name as member_name, (
+          select count(*) from public.songbattle_room_votes v
+          join public.songbattle_room_matches mt on mt.id = v.match_id
+          where mt.room_id = v_room.id
+            and ((v.choice = 0 and mt.sub_a = s.id) or (v.choice = 1 and mt.sub_b = s.id))
+        ) as votes
+        from public.songbattle_room_submissions s
+        join public.songbattle_room_members m on m.member_id = s.member_id
+        where s.room_id = v_room.id
+      ) t
     ), '[]'::jsonb) else '[]'::jsonb end
   );
   return v_result;

@@ -576,7 +576,7 @@
     }
 
     function songName(song) {
-      return song.title || `${song.provider === "spotify" ? "Spotify" : "YouTube"}-zene`;
+      return song.title || `${song.provider === "spotify" || /^https:\/\/open\.spotify\.com\//i.test(song.url || "") ? "Spotify" : "YouTube"}-zene`;
     }
 
     function embedUrl(value) {
@@ -685,7 +685,7 @@
           ${playButton(room.champion)}
         </div>
         <h3>Ranglista</h3>
-        <ol class="rb-board">${room.leaderboard.map(row => `<li><span class="name">${escapeHtml(row.member_name)}</span><span class="score">${row.votes} szavazat · ${row.songs} dal</span></li>`).join("")}</ol>`;
+        <ol class="rb-board">${room.leaderboard.map(row => `<li><span class="name">${escapeHtml(row.member_name)} <span class="submission-meta">· ${escapeHtml(songName(row))}${row.is_winner ? " 🏆" : ""}</span></span><span class="score">${row.votes} szavazat</span></li>`).join("")}</ol>`;
     }
 
     async function roomRpc(name, extra = {}) {
