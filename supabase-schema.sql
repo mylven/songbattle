@@ -539,6 +539,22 @@ begin
 end;
 $$;
 
+create or replace function public.songbattle_song_key(p_url text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(
+    'yt:' || (regexp_match(p_url, '(?:youtu\.be/|[?&]v=|/shorts/|/embed/|/live/)([A-Za-z0-9_-]{6,15})', 'i'))[1],
+    'sp:' || (regexp_match(p_url, 'open\.spotify\.com/(?:intl-[a-z-]+/)?(track|album|playlist|episode|show)/([A-Za-z0-9]+)', 'i'))[1]
+      || ':' || (regexp_match(p_url, 'open\.spotify\.com/(?:intl-[a-z-]+/)?(track|album|playlist|episode|show)/([A-Za-z0-9]+)', 'i'))[2],
+    lower(split_part(p_url, '?', 1))
+  );
+$$;
+
+revoke all on function public.songbattle_song_key(text) from public, anon, authenticated;
+
 create or replace function public.submit_songbattle_room_song(
   p_room_code text,
   p_member_id uuid,
@@ -577,6 +593,12 @@ begin
   if length(v_title) > 120 or length(v_url) > 500
     or v_url !~* '^https://(youtube\.com/|www\.youtube\.com/|music\.youtube\.com/|youtu\.be/|open\.spotify\.com/)'
   then raise exception 'Invalid Spotify or YouTube URL'; end if;
+
+  perform pg_advisory_xact_lock(hashtext(v_room_id::text));
+  if exists (
+    select 1 from public.songbattle_room_submissions
+    where room_id = v_room_id and public.songbattle_song_key(url) = public.songbattle_song_key(v_url)
+  ) then raise exception 'Ez a dal már be lett küldve ebbe a szobába.'; end if;
 
   insert into public.songbattle_room_submissions (room_id, member_id, title, url)
   values (v_room_id, p_member_id, v_title, v_url)
