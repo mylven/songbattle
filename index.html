@@ -693,7 +693,7 @@
       try {
         const { error } = await supabaseClient.rpc(name, {
           p_room_code: roomSession.code,
-          ...(roomSession.hostToken ? { p_host_token: roomSession.hostToken } : {}),
+          ...(roomSession.hostToken && !("p_member_id" in extra) ? { p_host_token: roomSession.hostToken } : {}),
           ...extra
         });
         if (error) throw error;
