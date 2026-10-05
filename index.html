@@ -579,17 +579,65 @@
       return song.title || `${song.provider === "spotify" ? "Spotify" : "YouTube"}-zene`;
     }
 
-    function songCard(song, side, match, chosen) {
+    function embedUrl(value) {
+      try {
+        const url = new URL(value);
+        const host = url.hostname.toLowerCase();
+        if (host === "open.spotify.com") {
+          const m = url.pathname.match(/^\/(?:intl-[a-z-]+\/)?(track|album|playlist|episode|show)\/([A-Za-z0-9]+)/);
+          return m ? { src: `https://open.spotify.com/embed/${m[1]}/${m[2]}`, height: 152 } : null;
+        }
+        let id = null;
+        if (host === "youtu.be") id = url.pathname.slice(1);
+        else if (["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) {
+          if (url.pathname === "/watch") id = url.searchParams.get("v");
+          else id = url.pathname.match(/^\/(?:shorts|embed|live)\/([^/?]+)/)?.[1] || null;
+        }
+        return id && /^[A-Za-z0-9_-]{6,15}$/.test(id) ? { src: `https://www.youtube.com/embed/${id}`, height: 200 } : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function playButton(song) {
+      return embedUrl(song.url) ? `<button class="room-button secondary" type="button" data-play="${escapeHtml(song.url)}">▶ Lejátszás</button><div class="rb-player"></div>` : "";
+    }
+
+    function songCard(song, side, match) {
       if (!song) return `<div class="rb-song bye"><p class="rb-title">Szabad kör — automatikusan továbbjut</p></div>`;
-      const voted = match.my_choice !== null && match.my_choice !== undefined;
-      const count = side === 0 ? match.votes_a : match.votes_b;
-      return `<div class="rb-song${chosen ? " chosen" : ""}">
+      return `<div class="rb-song" data-card="${escapeHtml(match.id)}:${side}">
         <p class="rb-title">${escapeHtml(songName(song))}</p>
-        <div class="submission-meta">${escapeHtml(song.member_name)} · <a class="submission-link" href="${escapeHtml(song.url)}" target="_blank" rel="noopener noreferrer">Meghallgatom ↗</a></div>
-        ${voted ? `<div class="rb-votes">${count} szavazat</div>` : ""}
-        <button class="room-button" type="button" data-room-vote="${side}" data-match="${escapeHtml(match.id)}" ${voted || match.decided ? "disabled" : ""}>${chosen ? "Erre szavaztál" : voted ? "Szavazat leadva" : "Erre szavazok"}</button>
+        <div class="submission-meta">${escapeHtml(song.member_name)} · <a class="submission-link" href="${escapeHtml(song.url)}" target="_blank" rel="noopener noreferrer">Megnyitás ↗</a></div>
+        ${playButton(song)}
+        <div class="bar"><div class="bar-fill" data-bar></div></div>
+        <div class="rb-votes" data-votes></div>
+        <button class="room-button" type="button" data-room-vote="${side}" data-match="${escapeHtml(match.id)}"></button>
       </div>`;
     }
+
+    // A lejátszó ne induljon újra élő frissítéskor, ezért csak a számlálókat írjuk felül.
+    function updateMatches(matches) {
+      const body = document.querySelector("#rb-body");
+      for (const match of matches) {
+        const total = Number(match.votes_a) + Number(match.votes_b);
+        const voted = match.my_choice !== null && match.my_choice !== undefined;
+        [0, 1].forEach(side => {
+          const card = body.querySelector(`[data-card="${match.id}:${side}"]`);
+          if (!card) return;
+          const count = Number(side === 0 ? match.votes_a : match.votes_b);
+          const pct = total ? Math.round(count / total * 100) : 0;
+          card.querySelector("[data-bar]").style.width = `${pct}%`;
+          card.querySelector("[data-votes]").textContent = `${count} szavazat · ${pct}%`;
+          card.classList.toggle("chosen", match.my_choice === side);
+          const button = card.querySelector("[data-room-vote]");
+          button.disabled = voted || match.decided;
+          button.textContent = match.my_choice === side ? "Erre szavaztál" : voted ? "Szavazat leadva" : "Erre szavazok";
+        });
+      }
+    }
+
+    let rbKey = "";
+    let lastMatches = [];
 
     function renderRoomBattle(room, isHost) {
       const status = room.status || "lobby";
@@ -601,25 +649,32 @@
       document.querySelector("#rb-host-actions").hidden = !isHost;
       document.querySelector("#rb-close-round").hidden = status !== "battle";
       document.querySelector("#rb-reset").hidden = status !== "finished";
-      if (status === "lobby") { body.innerHTML = ""; return; }
+      if (status === "lobby") { body.innerHTML = ""; rbKey = ""; return; }
 
       if (status === "battle") {
         const last = room.current_round === room.total_rounds;
         document.querySelector("#rb-title").textContent = last ? "Döntő" : `${room.current_round}. forduló / ${room.total_rounds}`;
-        body.innerHTML = `<div class="rb-matches">${room.matches.map(match => `
-          <div class="rb-match">${songCard(match.a, 0, match, match.my_choice === 0)}<span class="rb-vs">VS</span>${songCard(match.b, 1, match, match.my_choice === 1)}</div>`).join("")}</div>
-          <p class="room-hint">${isHost ? "A forduló lezárásakor a több szavazatot kapott dal jut tovább (döntetlennél sorsolás)." : "A host zárja le a fordulót, utána jön a következő."}</p>`;
-        body.querySelectorAll("[data-room-vote]").forEach(button => {
-          button.addEventListener("click", () => castRoomVote(button.dataset.match, Number(button.dataset.roomVote)));
-        });
+        lastMatches = room.matches;
+        const key = `battle:${room.current_round}:${room.matches.map(match => match.id).join(",")}`;
+        if (key !== rbKey) {
+          rbKey = key;
+          body.innerHTML = `<div class="rb-matches">${room.matches.map(match => `
+            <div class="rb-match">${songCard(match.a, 0, match)}<span class="rb-vs">VS</span>${songCard(match.b, 1, match)}</div>`).join("")}</div>
+            <p class="room-hint">${isHost ? "A forduló lezárásakor a több szavazatot kapott dal jut tovább (döntetlennél sorsolás)." : "A host zárja le a fordulót, utána jön a következő."}</p>`;
+        }
+        updateMatches(room.matches);
         return;
       }
 
       document.querySelector("#rb-title").textContent = "A battle véget ért";
+      const finishedKey = `finished:${room.champion.id}:${room.leaderboard.map(row => `${row.member_name}${row.votes}`).join(",")}`;
+      if (finishedKey === rbKey) return;
+      rbKey = finishedKey;
       body.innerHTML = `<div class="rb-champion">
           <div class="submission-meta">Győztes dal</div>
           <h3>${escapeHtml(songName(room.champion))}</h3>
           <div class="submission-meta">Beküldte: ${escapeHtml(room.champion.member_name)} · <a class="submission-link" href="${escapeHtml(room.champion.url)}" target="_blank" rel="noopener noreferrer">Megnyitás ↗</a></div>
+          ${playButton(room.champion)}
         </div>
         <h3>Ranglista</h3>
         <ol class="rb-board">${room.leaderboard.map(row => `<li><span class="name">${escapeHtml(row.member_name)}</span><span class="score">${row.votes} szavazat · ${row.songs} dal</span></li>`).join("")}</ol>`;
@@ -642,8 +697,43 @@
     }
 
     function castRoomVote(matchId, choice) {
+      // Azonnali visszajelzés: a saját szavazatot helyben már most megjelenítjük.
+      const optimistic = lastMatches.map(match => match.id !== matchId || match.my_choice !== null ? match : {
+        ...match,
+        my_choice: choice,
+        votes_a: Number(match.votes_a) + (choice === 0 ? 1 : 0),
+        votes_b: Number(match.votes_b) + (choice === 1 ? 1 : 0)
+      });
+      updateMatches(optimistic);
       return roomRpc("cast_songbattle_room_vote", { p_member_id: roomSession.memberId, p_match_id: matchId, p_choice: choice });
     }
+
+    document.querySelector("#rb-body").addEventListener("click", event => {
+      const voteButton = event.target.closest("[data-room-vote]");
+      if (voteButton && !voteButton.disabled) {
+        castRoomVote(voteButton.dataset.match, Number(voteButton.dataset.roomVote));
+        return;
+      }
+      const playButtonElement = event.target.closest("[data-play]");
+      if (!playButtonElement) return;
+      const player = playButtonElement.nextElementSibling;
+      if (player.firstChild) {
+        player.replaceChildren();
+        playButtonElement.textContent = "▶ Lejátszás";
+        return;
+      }
+      const embed = embedUrl(playButtonElement.dataset.play);
+      if (!embed) return;
+      const frame = document.createElement("iframe");
+      frame.src = embed.src;
+      frame.height = embed.height;
+      frame.style.cssText = "width:100%;border:0;border-radius:10px";
+      frame.allow = "autoplay; encrypted-media; clipboard-write; fullscreen";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.title = "Zenelejátszó";
+      player.append(frame);
+      playButtonElement.textContent = "■ Bezárás";
+    });
 
     async function refreshRoom() {
       if (!roomSession || roomRefreshInProgress) return;
@@ -685,7 +775,7 @@
       roomEntryError.textContent = "";
       roomStatus.textContent = "Szoba létrehozva. Oszd meg a kódot a résztvevőkkel.";
       await refreshRoom();
-      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 3000);
+      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 1500);
     }
 
     async function joinRoom(code, name) {
@@ -700,7 +790,7 @@
       saveRoomSession({ code: code.trim().toUpperCase(), memberId, hostToken: null });
       roomEntryError.textContent = "";
       await refreshRoom();
-      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 3000);
+      if (!roomPoll) roomPoll = setInterval(() => refreshRoom(), 1500);
     }
 
     async function submitRoomSong(form) {
@@ -1003,7 +1093,7 @@
         roomSession = loadRoomSession();
         if (roomSession) {
           await refreshRoom();
-          roomPoll = setInterval(() => refreshRoom(), 3000);
+          roomPoll = setInterval(() => refreshRoom(), 1500);
         }
       } catch (error) {
         console.error("Songbattle inicializálása nem sikerült.", error);
